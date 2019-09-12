@@ -23,7 +23,7 @@ class AUV2D():
     input : np.array
         The current input. [propeller_input, rudder_position].
     """
-    def __init__(self, t_step, init_pos, width=2):
+    def __init__(self, t_step, init_pos, width=4):
         """
         The __init__ method declares all class atributes.
 
@@ -43,6 +43,7 @@ class AUV2D():
         self.width = width
         self.t_step = t_step
         self.input = [0, 0]
+        self.prev_inputs =np.vstack([self.input])
 
     def step(self, action):
         """
@@ -58,16 +59,19 @@ class AUV2D():
         self._sim()
 
         self.prev_states = np.vstack([self.prev_states,self._state])
+        self.prev_inputs = np.vstack([self.prev_inputs,self.input])
 
     def _sim(self):
         psi = self._state[2]
         nu = self._state[3:]
 
         eta_dot = geom.Rzyx(0, 0, geom.princip(psi)).dot(nu)
-        nu_dot = const.M_inv.dot(const.B(nu).dot(self.input)
-                                 - const.D(nu).dot(nu)
-                                 - const.C(nu).dot(nu)
-                                 - const.L(nu).dot(nu))
+        nu_dot = const.M_inv.dot(
+            const.B(nu).dot(self.input)
+            - const.D(nu).dot(nu)
+            - const.C(nu).dot(nu)
+            - const.L(nu).dot(nu)
+        )
         state_dot = np.concatenate([eta_dot, nu_dot])
         self._state += state_dot*self.t_step
         self._state[2] = geom.princip(self._state[2])
@@ -96,11 +100,36 @@ class AUV2D():
         return self._state[2]
 
     @property
+    def heading_change(self):
+        """
+        Returns the change of heading of the AUV wrt true north.
+        """
+        return geom.princip(self.prev_states[-1, 2] - self.prev_states[-2, 2]) if len(self.prev_states) >= 2 else self.heading
+
+    @property
+    def rudder_change(self):
+        """
+        Returns the smoothed current rutter change.
+        """
+        sum_rudder_change = 0
+        n_samples = min(10, len(self.prev_inputs))
+        for i in range(n_samples):
+            sum_rudder_change += self.prev_inputs[-1 - i, 1]
+        return sum_rudder_change/n_samples
+
+    @property
     def velocity(self):
         """
         Returns the surge and sway velocity of the AUV.
         """
         return self._state[3:5]
+
+    @property
+    def speed(self):
+        """
+        Returns the surge and sway velocity of the AUV.
+        """
+        return linalg.norm(self.velocity)
 
     @property
     def yawrate(self):
@@ -115,6 +144,14 @@ class AUV2D():
         Returns the max speed of the AUV.
         """
         return const.MAX_SPEED
+
+    @property
+    def crab_angle(self):
+        return np.arctan2(self.velocity[1], self.velocity[0])
+
+    @property
+    def course(self):
+        return self.heading + self.crab_angle
 
 
 def _surge(surge):

@@ -1,6 +1,7 @@
 from copy import deepcopy
 import numpy as np
 import numpy.linalg as linalg
+import shapely.geometry
 
 from scipy import interpolate
 from scipy.optimize import fminbound
@@ -12,25 +13,25 @@ class ParamCurve():
 
         for _ in range(3):
             arclengths = arc_len(waypoints)
-            path_coords = interpolate.pchip(
-                x=arclengths, y=waypoints, axis=1)
-            waypoints = path_coords(
-                np.linspace(arclengths[0], arclengths[-1], 1000))
+            path_coords = interpolate.pchip(x=arclengths, y=waypoints, axis=1)
+            path_derivatives = path_coords.derivative()
+            waypoints = path_coords(np.linspace(arclengths[0], arclengths[-1], 1000))
 
         self.path_coords = path_coords
+        self.path_derivatives = path_derivatives
+
         self.s_max = arclengths[-1]
         self.length = self.s_max
         S = np.linspace(0, self.length, 1000)
         self.path_points = np.transpose(self.path_coords(S))
+        self.line = shapely.geometry.LineString(self.path_points)
 
     def __call__(self, arclength):
         return self.path_coords(arclength)
 
     def get_direction(self, arclength):
-        arclength = np.clip(arclength, 0.05, self.s_max - 0.05)
-        delta_x, delta_y = (self.path_coords(arclength + 0.05)
-                            - self.path_coords(arclength - 0.05))
-        return geom.princip(np.arctan2(delta_y, delta_x))
+        derivative = self.path_derivatives(arclength)
+        return np.arctan2(derivative[1], derivative[0])
 
     def get_endpoint(self):
         return self(self.s_max)
@@ -39,6 +40,16 @@ class ParamCurve():
         return fminbound(lambda s: linalg.norm(self(s) - position),
                          x1=0, x2=self.length, xtol=1e-6,
                          maxfun=10000)
+
+    def get_closest_point(self, position):
+        closest_arclength = self.get_closest_arclength(position)
+        closest_point = self(closest_arclength)
+        return closest_point, closest_arclength
+
+    def get_closest_point_distance(self, position):
+        closest_point, closest_arclength = self.get_closest_point(position)
+        closest_point_distance =  linalg.norm(closest_point - position)
+        return closest_point_distance, closest_point, closest_arclength
 
     def __reversed__(self):
         curve = deepcopy(self)
@@ -54,8 +65,7 @@ class ParamCurve():
 class RandomCurveThroughOrigin(ParamCurve):
     def __init__(self, rng, nwaypoints, length=400):
         angle_init = 2*np.pi*(rng.rand() - 0.5)
-        start = np.array([length*np.cos(angle_init),
-                          length*np.sin(angle_init)])
+        start = np.array([0.5*length*np.cos(angle_init), 0.5*length*np.sin(angle_init)])
         end = -np.array(start)
         waypoints = np.vstack([start, end])
         for waypoint in range(nwaypoints // 2):
