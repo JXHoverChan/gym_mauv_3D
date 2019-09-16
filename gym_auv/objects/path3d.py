@@ -31,6 +31,7 @@ class ParamCurve3d():
 
         return path_coords
 
+
     def plot_path(self, *opts):
         x = []
         y = []
@@ -44,6 +45,7 @@ class ParamCurve3d():
         ax = plt.axes(projection='3d')
         ax.plot(x, y, z, *opts)
         return ax
+    
     
     def get_closest_point_distance(self, position):
         best_distance = 1000000
