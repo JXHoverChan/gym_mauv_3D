@@ -11,6 +11,8 @@ class ParamCurve3d():
         self.segment_lengths = get_path_lengths(waypoints)
         self.length = np.sum(self.segment_lengths)
         self.path_coords = self._get_path_coords_from_waypoints(waypoints)
+        self.path_derivatives = self._get_path_derivatives()
+        self.theta, self.psi = self._get_path_angles()
 
 
     def _get_path_coords_from_waypoints(self, waypoints):
@@ -29,7 +31,21 @@ class ParamCurve3d():
         path_coords.append(np.array((waypoints[-1])))
         self.ncoords = len(path_coords) #update ncoords due to quantization error
 
-        return path_coords
+        return np.array(path_coords)
+
+
+    def _get_path_derivatives(self):
+        ds = self.length / self.ncoords
+        diff = np.diff(self.path_coords, axis=0)
+        derivative = diff/ds
+        return derivative
+
+
+    def _get_path_angles(self):
+        derivative = self.path_derivatives
+        theta = np.arcsin(derivative[:, 2])
+        psi = np.arctan2((derivative[:, 1]), derivative[:,0])
+        return np.degrees(theta), np.degrees(psi)
 
 
     def plot_path(self, *opts):
@@ -66,17 +82,14 @@ def get_path_lengths(waypoints):
 
 
 if __name__ == "__main__":
-    x = np.linspace(0,6,100)
-    waypoints = [(0,0,0), (1,1,1), (4,3,3)]
+    x = np.linspace(0,6.3,100)
+    waypoints = [(0,0,0), (1,1,0), (3,3,2)]
     waypoints = []
     for i in x:
         waypoint = (5*np.sin(i), 5*np.cos(i), 0.05*i)
         waypoints.append(waypoint)
     curve = ParamCurve3d(waypoints, 1000)
-    position = np.array([2,5,0])
-    c, bd = curve.get_closest_point_distance(position)
-    print("Closest_distance: {}".format(bd))
+    print(curve.theta)
     ax = curve.plot_path()
-    ax.scatter3D(*position)
-    ax.scatter3D(*c)
+    ax.scatter3D(*curve.path_coords[400])
     plt.show()
