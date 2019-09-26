@@ -67,7 +67,7 @@ Y_vv = -80
 Y_rr = 0.3
 Z_ww = Y_vv
 Z_qq = -Y_rr
-K_pp = 6e-4
+K_pp = -6e-4
 M_ww = 1.5
 M_qq = -9.1
 N_vv = -M_ww
@@ -98,7 +98,7 @@ N_urf = x_fin*Y_urf
 Y_uudr = rho*C_LF*S_fin
 Z_uuds = -rho*C_LF*S_fin
 M_uuds = -x_fin*Z_uuds
-N_uudr = x_fin*Y_uudr
+N_uudr = -x_fin*Y_uudr
 
 
 def M_inv():
@@ -170,8 +170,8 @@ def B(nu):
 
 
 def G(eta):
-    phi = eta[4]
-    theta = eta[5]
+    phi = eta[3]
+    theta = eta[4]
     G = np.array([(W-_B)*sin(theta),
                   -(W-_B)*cos(theta)*sin(phi),
                   -(W-_B)*cos(theta)*cos(phi),
