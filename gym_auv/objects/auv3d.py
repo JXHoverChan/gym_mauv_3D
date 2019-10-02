@@ -36,6 +36,7 @@ class AUV3D():
         self.width = width
     
     def step(self, action):
+        print(action)
         thrust = _surge(action[0])
         rudder_angle = _steer(action[1])
         elevator_angle = _steer(action[2])
@@ -85,7 +86,7 @@ class AUV3D():
         Returns an array holding the path of the AUV in cartesian
         coordinates.
         """
-        return self.state_trajectory[0:3, :]
+        return self.state_trajectory[:, 0:3]
 
     @property
     def heading(self):
@@ -100,11 +101,30 @@ class AUV3D():
         Returns the change of heading of the AUV wrt true north.
         """
         if len(self.state[5])>=2:
-            prev_heading = geom.princip(self.state_trajectory[5,-1])
+            prev_heading = geom.princip(self.state_trajectory[5,-2])
             heading_change = self.heading - prev_heading
         else:
             heading_change = self.heading
         return heading_change
+
+    @property
+    def pitch(self):
+        """
+        Returns the pitch of the AUV wrt NED.
+        """
+        return self.state[4]
+
+    @property
+    def pitch_change(self):
+        """
+        Returns the change of pitch of the AUV wrt NED.
+        """
+        if len(self.state[4])>=2:
+            prev_pitch = geom.princip(self.state_trajectory[4,-2])
+            pitch_change = self.pitch - prev_pitch
+        else:
+            pitch_change = self.pitch
+        return pitch_change
 
     @property
     def rudder_change(self):
@@ -143,11 +163,11 @@ class AUV3D():
         return np.linalg.norm(self.velocity)
 
     @property
-    def yawrate(self):
+    def angular_velocity(self):
         """
-        Returns the rate of rotation about the z-axis.
+        Returns the rate of rotation about the NED frame.
         """
-        return self.state[11]
+        return self.state[9:12]
 
     @property
     def max_speed(self):

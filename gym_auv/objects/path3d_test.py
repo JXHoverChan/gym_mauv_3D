@@ -51,7 +51,7 @@ class Path3D():
             self.elevation_angles = np.append(self.elevation_angles, beta)
 
 
-    def plot_path(self, *opts):
+    def plot_path(self, label,*opts):
         x = []
         y = []
         z = []
@@ -63,14 +63,19 @@ class Path3D():
             z.append(self(ds)[2])
 
         ax = plt.axes(projection='3d')
-        ax.plot(x, y, z, *opts)
+        ax.plot(x, y, z, label=label, *opts)
         return ax
     
     
-    def get_closest_point(self, position):
+    def get_closest_s(self, position):
         s = fminbound(lambda s: np.linalg.norm(self(s) - position),
-                         x1=0, x2=self.length, xtol=1e-6,
-                         maxfun=10000)
+                    x1=0, x2=self.length, xtol=1e-6,
+                    maxfun=10000)
+        return s
+
+
+    def get_closest_point(self, position):
+        s = self.get_closest_s(position)
         return self(s)
 
 
