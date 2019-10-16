@@ -36,7 +36,6 @@ class AUV3D():
         self.width = width
     
     def step(self, action):
-        print(action)
         thrust = _surge(action[0])
         rudder_angle = _steer(action[1])
         elevator_angle = _steer(action[2])

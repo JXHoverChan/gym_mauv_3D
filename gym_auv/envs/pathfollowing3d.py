@@ -3,8 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gym_auv.utils.geomutils as geom
 
+from math import inf
 from mpl_toolkits.mplot3d import Axes3D
-from gym_auv.objects.path3d_test import Path3D, generate_random_waypoints
+from gym_auv.objects.path3d import Path3D, generate_random_waypoints
 from gym_auv.objects.auv3d import AUV3D
 
 
@@ -34,52 +35,46 @@ class PathFollowing3d(gym.Env):
         self.np_random = None
 
         self.reward = 0
-        self.path_prog = None
-        self.past_actions = None
-        self.past_obs = None
-        self.t_step = None
+        self.path_prog = []
+        self.past_actions = []
+        self.past_obs = []
+        self.t_step = self.config["t_step"]
         self.total_t_steps = 0
 
         self.action_space = gym.spaces.Box(low=np.array([0, -1, -1]),
                                            high=np.array([1, 1, 1]),
                                            dtype=np.float32)
         self.observation_space = gym.spaces.Box(
-            low=np.array([-1]*self.n_observations),
-            high=np.array([1]*self.n_observations),
+            low=np.array([-inf]*self.n_observations),
+            high=np.array([inf]*self.n_observations),
             dtype=np.float32)
 
         self.generate()
 
 
     def generate(self):
-        
         nwaypoints = np.random.randint(10,15)
         waypoints = generate_random_waypoints(nwaypoints)
         self.path = Path3D(waypoints)
         init_pos = self.path(0) + 0*np.random.rand(3)
         init_angle = np.array([0, self.path.elevation_angles[0], self.path.azimuth_angles[0]])
-        
-        self.t_step = self.config["t_step"]
-        self.vessel = AUV3D(self.t_step,
-                            np.hstack([init_pos, init_angle]))
-        self.path_prog = np.array([self.path.get_closest_s(self.vessel.position)])
+        initial_state = np.hstack([init_pos, init_angle])
+
+        self.vessel = AUV3D(self.t_step, initial_state)
+        self.path_prog.append(self.path.get_closest_s(self.vessel.position))
 
 
     def step(self, action):
-        action = action[-1]
-        print(action)
         action = np.clip(action, np.array([0, -1, -1]), np.array([1, 1, 1]))
-        action = np.reshape(action, (1,3))
-
-        self.past_actions = np.vstack([self.past_actions, action])
-        print(self.past_actions)
+        self.past_actions.append(action)
         self.vessel.step(action)
 
         prog = self.path.get_closest_s(self.vessel.position)
-        self.path_prog = np.append(self.path_prog, prog)
+        self.path_prog.append(prog)
 
         obs = self.observe()
-        self.past_obs = np.vstack([self.past_obs, obs])
+        self.past_obs.append(obs)
+
         done, step_reward = self.step_reward()
         info = {}
 
@@ -107,6 +102,7 @@ class PathFollowing3d(gym.Env):
         obs = self.vessel.velocity
         obs = np.vstack([*obs, azimuth_error, elevation_error, cross_track_error, vertical_track_error])
         return np.reshape(obs, (7,))
+
 
     def step_reward(self):
         obs = self.past_obs[-1]
@@ -140,16 +136,16 @@ class PathFollowing3d(gym.Env):
         self.vessel = None
         self.path = None
         self.reward = 0
-        self.path_prog = None
-        self.past_actions = np.array([[0, 0, 0]])
-        self.t_step = None
+        self.path_prog = []
+        self.past_actions = []
+        self.past_obs = []
 
         if self.np_random is None:
             self.seed()
 
         self.generate()
         obs = self.observe()
-        self.past_obs = np.array([obs])
+        self.past_obs.append(obs)
         return obs
 
 
