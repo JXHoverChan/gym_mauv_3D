@@ -32,12 +32,16 @@ env_config = {
     "max_timestemps": 10000}
 
 if __name__ == "__main__":
-    agent = PPO2.load(load_path="agent1/461824.pkl")
+    #agent = PPO2.load(load_path="agent1/521216.pkl")
     env = PathFollowing3d(env_config)
     ax = env.path.plot_path(label="Path")
-    for i in range(10000):
+    for i in range(1000):
         obs = env.observe()
-        action = agent.predict(obs)[0]
+        #action = agent.predict(obs)[0]
+        action = np.array([1,1,0])
         env.step(action)
     ax.plot3D(env.vessel.path_taken[:, 0], env.vessel.path_taken[:, 1], env.vessel.path_taken[:, 2], label="AUV trajectory")
     plt.show()
+    #for i in range(12):
+        #plt.plot(env.vessel.state_trajectory[:,i])
+        #plt.show()

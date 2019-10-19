@@ -29,15 +29,12 @@ class PathFollowing3d(gym.Env):
         self.config = env_config
         self.nstates = 7
         self.n_observations = self.nstates
-        self.vessel = None
-        self.path = None
-
-        self.np_random = None
 
         self.reward = 0
         self.path_prog = []
         self.past_actions = []
         self.past_obs = []
+        
         self.t_step = self.config["t_step"]
         self.total_t_steps = 0
 
@@ -45,8 +42,8 @@ class PathFollowing3d(gym.Env):
                                            high=np.array([1, 1, 1]),
                                            dtype=np.float32)
         self.observation_space = gym.spaces.Box(
-            low=np.array([-inf]*self.n_observations),
-            high=np.array([inf]*self.n_observations),
+            low=np.array([-1]*self.n_observations),
+            high=np.array([1]*self.n_observations),
             dtype=np.float32)
 
         self.generate()
@@ -59,7 +56,6 @@ class PathFollowing3d(gym.Env):
         init_pos = self.path(0) + 0*np.random.rand(3)
         init_angle = np.array([0, self.path.elevation_angles[0], self.path.azimuth_angles[0]])
         initial_state = np.hstack([init_pos, init_angle])
-
         self.vessel = AUV3D(self.t_step, initial_state)
         self.path_prog.append(self.path.get_closest_s(self.vessel.position))
 
@@ -99,6 +95,7 @@ class PathFollowing3d(gym.Env):
         azimuth_error = np.arctan2(-cross_track_error, la_distance)
         elevation_error = np.arctan2(vertical_track_error, np.sqrt(cross_track_error**2 + la_distance**2))
         
+        normalization = np.array([2, 2])
         obs = self.vessel.velocity
         obs = np.vstack([*obs, azimuth_error, elevation_error, cross_track_error, vertical_track_error])
         return np.reshape(obs, (7,))
@@ -111,7 +108,6 @@ class PathFollowing3d(gym.Env):
 
         delta_path_prog = self.path_prog[-1] - self.path_prog[-2]
         max_prog = self.config["cruise_speed"]*self.t_step
-
 
         speed_error = self.vessel.speed - self.config["cruise_speed"]
         relative_progress = delta_path_prog/max_prog
@@ -152,15 +148,3 @@ class PathFollowing3d(gym.Env):
     def seed(self, seed=5):
         self.np_random, seed = gym.utils.seeding.np_random(seed)
         return [seed]
-
-
-if __name__ == "__main__":
-    env = PathFollowing3d(env_config)
-    ax1 = env.path.plot_path(label="Path")
-    ax1.scatter3D(*env.vessel.position)
-    ax1.legend()
-    plt.show()
-    env.reset()
-    ax1 = env.path.plot_path(label="Path")
-    ax1.legend()
-    plt.show()

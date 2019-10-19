@@ -43,3 +43,36 @@ def J(eta):
     J = np.vstack([np.hstack([R, zero]),
                    np.hstack([zero, T])])
     return J
+
+
+def S_skew(a):
+    a1 = a[0]
+    a2 = a[1]
+    a3 = a[2]
+
+    S = np.vstack([
+        np.hstack([0, -a3, a2]),
+        np.hstack([a3, 0, -a1]),
+        np.hstack([-a2, a1, 0])
+    ])
+
+    return S
+
+
+def _H(r):
+    I3 = np.identity(3)
+    zero3 = 0*np.identity(3)
+
+    H = np.vstack([
+        np.hstack([I3, np.transpose(S_skew(r))]),
+        np.hstack([zero3, I3])
+    ])
+
+    return H
+
+
+def move_to_CO(A_CG, r_g):
+    H = _H(r_g)
+    Ht = np.transpose(H)
+    A_CO = Ht.dot(A_CG).dot(H)
+    return A_CO

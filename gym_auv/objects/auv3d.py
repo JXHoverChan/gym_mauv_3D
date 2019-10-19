@@ -1,32 +1,17 @@
 import numpy as np
-import gym_auv.utils.constants3d as const
+import gym_auv.utils.state_space_3d_cor as ss
 import gym_auv.utils.geomutils as geom
 import matplotlib.pyplot as plt
 
+from gym_auv.utils.current import Current
 from mpl_toolkits.mplot3d import Axes3D
 
 
 class AUV3D():
-    """
-    Creates an environment with a vessel, goal and obstacles.
-
-    Attributes
-    ----------
-    path_taken : np.array
-        Array of size (?, 2) discribing the path the AUV has taken.
-    radius : float
-        The maximum distance from the center of the AUV to its edge
-        in meters.
-    t_step : float
-        The simulation timestep.
-    input : np.array
-        The current input. [propeller_input, rudder_position].
-    """
-    
-    def __init__(self, t_step_size, init_pos, width=2):
-        eta_0 = init_pos
-        nu_0 = np.zeros((6,))
-        self.state = np.hstack([eta_0, nu_0])
+    def __init__(self, t_step_size, init_state, width=2):
+        eta_0 = init_state
+        nu_r_0 = np.zeros((6,))
+        self.state = np.hstack([eta_0, nu_r_0])
         self.state_trajectory = np.hstack(self.state)
 
         self.input = np.zeros((3,))
@@ -34,7 +19,10 @@ class AUV3D():
         
         self.t_step_size = t_step_size
         self.width = width
+        
+        self.current = Current(mu=0.02, Vmin=0.2, Vmax=0.0, Vc_init=0, alpha_init=0, beta_init=np.pi, t_step_size=t_step_size)
     
+
     def step(self, action):
         thrust = _surge(action[0])
         rudder_angle = _steer(action[1])
@@ -46,29 +34,32 @@ class AUV3D():
         self.state_trajectory = np.vstack([self.state_trajectory, self.state])
         self.input_trajectory = np.vstack([self.input_trajectory, self.input])
 
-    def _sim(self):
-        eta = self.state[:6]
-        nu = self.state[6:]
 
-        eta_dot = geom.J(eta).dot(nu)
-        nu_dot = const.M_inv().dot(
-            const.B(nu).dot(self.input)
-            - const.D(nu).dot(nu)
-            - const.C(nu).dot(nu)
-            - const.G(eta))
-        state_dot = np.hstack([eta_dot, nu_dot])
+    def _sim(self):
+        self.current.sim()
+        eta = self.state[:6]
+        nu_r = self.state[6:]
+        nu_c = self.current(eta)
+
+        eta_dot = geom.J(eta).dot(nu_r+nu_c)
+        nu_r_dot = ss.M_inv().dot(
+            ss.B(nu_r).dot(self.input)
+            - ss.D(nu_r).dot(nu_r)
+            - ss.C(nu_r).dot(nu_r)
+            - ss.G(eta))
+        state_dot = np.hstack([eta_dot, nu_r_dot])
         self.state += state_dot*self.t_step_size
         self.state[3] = geom.princip(self.state[3])
         self.state[4] = geom.princip(self.state[4])
         self.state[5] = geom.princip(self.state[5])
     
-    def plot_path(self, *opts):
+    def plot_path(self):
         x = self.state_trajectory[:, 0]
         y = self.state_trajectory[:, 1]
         z = self.state_trajectory[:, 2]
         
         ax = plt.axes(projection='3d')
-        ax.scatter3D(x, y, z, *opts)
+        ax.scatter3D(x, y, z)
         return ax
 
     @property
@@ -173,7 +164,7 @@ class AUV3D():
         """
         Returns the max speed of the AUV.
         """
-        return const.U_max
+        return ss.U_max
 
     @property
     def crab_angle(self):
@@ -186,34 +177,9 @@ class AUV3D():
 
 def _surge(surge):
     surge = np.clip(surge, 0, 1)
-    return surge*const.thrust_max
+    return surge*ss.thrust_max
+
 
 def _steer(steer):
     steer = np.clip(steer, -1, 1)
-    return steer*const.rudder_max
-
-
-if __name__ == "__main__":
-    init_pos = np.array([0,0,0,0,0,0])
-
-    auv = AUV3D(0.1, init_pos)
-
-    t = np.linspace(0,10,100)
-    thrust_in = 0*np.ones(100)
-    rudder_in = 0*np.sin(0.01*t)
-    elevator_in = np.zeros(100)
-
-    for i in range(len(thrust_in)):
-        inp = [0, 0, 0]
-        auv.step(inp)
-    ax = auv.plot_path()
-    plt.show()
-    plt.figure()
-    plt.plot(auv.state_trajectory[:,0])
-    plt.plot(auv.state_trajectory[:,1])
-    plt.plot(auv.state_trajectory[:,2])
-    plt.figure()
-    plt.plot(auv.state_trajectory[:,3])
-    plt.plot(auv.state_trajectory[:,4])
-    plt.plot(auv.state_trajectory[:,5])
-    plt.show()
+    return steer*ss.rudder_max

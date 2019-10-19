@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.linalg as linalg
 import matplotlib.pyplot as plt
+import gym_auv.utils.geomutils as geom
 
 from scipy.optimize import fminbound
 from mpl_toolkits.mplot3d import Axes3D
@@ -39,6 +40,7 @@ class Path3D():
                 return seg_start, i
             else:
                 seg_start += sl
+        return seg_start, i
 
 
     def _get_parametric_params(self):
@@ -47,8 +49,8 @@ class Path3D():
             derivative = diff[i] / self.segment_lengths[i]
             alpha = np.arctan2(derivative[1], derivative[0])
             beta = np.arctan2(-derivative[2], np.sqrt(derivative[0]**2 + derivative[1]**2))
-            self.azimuth_angles = np.append(self.azimuth_angles, alpha)
-            self.elevation_angles = np.append(self.elevation_angles, beta)
+            self.azimuth_angles = np.append(self.azimuth_angles, geom.princip(alpha))
+            self.elevation_angles = np.append(self.elevation_angles, geom.princip(beta))
 
 
     def plot_path(self, label,*opts):
@@ -108,14 +110,3 @@ def generate_random_waypoints(nwaypoints):
         wp = np.array([x, y, z])
         waypoints.append(wp)
     return waypoints
-
-if __name__ == "__main__":
-    x = np.linspace(0,6,100)
-    waypoints = generate_random_waypoints(8)
-    position = waypoints[4] + [30, 20, 10]
-    path = Path3D(waypoints)
-    p = path.get_closest_point(position)
-    ax = path.plot_path()
-    ax.scatter3D(*position)
-    ax.scatter3D(*p)
-    plt.show()
