@@ -75,13 +75,6 @@ SCENARIOS = {
             "min_reward": -500,
             "max_timestemps": 10000,
             "n_sensors": 0,
-            "n_sectors": 25,
-            "n_sensors_per_sector": 9,
-            "n_rings": 9,
-            "rear_detection": False,
-            "detection_grid": False,
-            "lidars": True,
-            "min_la_dist": 50,
         }
     },
     'PathColav-v0': {
@@ -98,5 +91,5 @@ for scenario in SCENARIOS:
     register(
         id=scenario,
         entry_point=SCENARIOS[scenario]['entry_point'],
-        kwargs={'env_config': SCENARIOS[scenario]['config']}
+        #kwargs={'env_config': SCENARIOS[scenario]['config']}
     )
