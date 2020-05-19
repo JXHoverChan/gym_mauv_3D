@@ -7,7 +7,7 @@ This repo implements a 6-DOF simulation model for an AUV according to the stable
 To install all packages needed in your virtual environment, run:
 
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
  
 ### Training an agent:
