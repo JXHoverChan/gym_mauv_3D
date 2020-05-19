@@ -49,11 +49,11 @@ class Path3D():
             derivative = diff[i] / self.segment_lengths[i]
             alpha = np.arctan2(derivative[1], derivative[0])
             beta = np.arctan2(-derivative[2], np.sqrt(derivative[0]**2 + derivative[1]**2))
-            self.azimuth_angles = np.append(self.azimuth_angles, geom.princip(alpha))
-            self.elevation_angles = np.append(self.elevation_angles, geom.princip(beta))
+            self.azimuth_angles = np.append(self.azimuth_angles, geom.ssa(alpha))
+            self.elevation_angles = np.append(self.elevation_angles, geom.ssa(beta))
 
 
-    def plot_path(self, label,*opts):
+    def plot_path(self):
         x = []
         y = []
         z = []
@@ -65,7 +65,7 @@ class Path3D():
             z.append(self(ds)[2])
 
         ax = plt.axes(projection='3d')
-        ax.plot(x, y, z, label=label, *opts)
+        ax.plot(x, y, z)
         return ax
     
     
@@ -82,8 +82,7 @@ class Path3D():
 
 
     def _get_path_lengths(self):
-        waypoints = self.waypoints
-        diff = np.diff(waypoints, axis=0)
+        diff = np.diff(self.waypoints, axis=0)
         seg_lengths = np.sqrt(np.sum(diff**2, axis=1))
         return seg_lengths
 
@@ -92,7 +91,7 @@ class Path3D():
         return self(self.length)
 
     
-    def get_direction(self, s):
+    def get_direction_angles(self, s):
         _, seg_index = self._get_segment_start(s)
         return self.azimuth_angles[seg_index], self.elevation_angles[seg_index]
 
@@ -100,9 +99,9 @@ class Path3D():
 def generate_random_waypoints(nwaypoints):
     waypoints = [np.array([0,0,0])]
     for i in range(nwaypoints-1):
-        azimuth = np.random.rand() * np.pi/2
-        elevation = np.random.rand() * np.pi/2
-        dist = np.random.randint(50, 150)
+        azimuth = np.random.normal(0,0.5) * np.pi/6
+        elevation = np.random.normal(0,0.5) * np.pi/6
+        dist = np.random.randint(50, 100)
 
         x = waypoints[i][0] + dist*np.cos(azimuth)*np.cos(elevation)
         y = waypoints[i][1] + dist*np.sin(azimuth)*np.cos(elevation)

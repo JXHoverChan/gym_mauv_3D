@@ -1,95 +1,43 @@
 import numpy as np
+
 from gym.envs.registration import register
 
-DEFAULT_CONFIG = {
-    "reward_ds": 3,
-    "penalty_negative_ds": 3,
-    "reward_speed_error": -1,
-    "reward_la_heading_error": 0,
+
+pid_pathcolav_config = {
+    "step_size": 0.10,
+    "max_t_steps": 4000,
+    "min_reward": -1000,
+    "n_obs_states": 12,
+    "cruise_speed": 1.5,
+    "lambda_reward": 0.6,
+    "reward_roll": -1,
+    "reward_rollrate": -1,
+    "reward_control_derivative": [-0.005, -0.005],
     "reward_heading_error": -1,
-    "reward_cross_track_error": 2,
-    "reward_d_cross_track_error": -200,
-    "reward_closeness": -0.0001,
-    "reward_collision": -10,
-    "reward_rudderchange": -2,
-    "living_penalty": -3,
-    "max_closest_point_distance": 10,
-    "max_closest_point_heading_error": np.pi/6,
-    "nobstacles": 20,
-    "lidar_range": 100,
-    "lidar_range_log_transform": True,
-    "obst_reward_range": 9,
-    "t_step_size": 0.1,
-    "cruise_speed": 2,
-    "min_la_dist": 50,
-    "goal_dist": 800,
-    "min_reward": -10000,
-    "end_on_collision": False,
-    "max_timestemps": 10000,
-    "sensor_interval_obstacles": 1,
-    "sensor_interval_path": 100,
-    "n_sensors_per_sector": 9,
-    "n_sectors": 25,
-    "n_rings": 9,
-    "detection_grid": False,
-    "lidars": True,
-    "lidar_rotation": False,
-    "rear_detection": False,
-    "sensor_convolution_sigma": 1
+    "reward_crosstrack_error": -0.0001,
+    "reward_pitch_error": -1,
+    "reward_verticaltrack_error": -0.0001,
+    "reward_use_rudder": -0.1,
+    "reward_use_elevator": -0.1,
+    "reward_collision": 0,
+    "sensor_span": (140,140), # the horizontal and vertical span of the sensors
+    "sensor_suite": (15, 15), # the number of sensors covering the horizontal and vertical span
+    "sensor_input_size": (8,8), # the shape of FLS data passed to the neural network. Max pooling from raw data is used
+    "sensor_frequency": 1,
+    "sonar_range": 25,
+    "n_obs_errors": 2,
+    "n_obs_inputs": 0,
+    "n_actuators": 2,
+    "la_dist": 3,
+    "accept_rad": 1,
+    "n_waypoints": 7,
+    "n_int_obstacles": 1,
+    "n_pro_obstacles": 3,
+    "n_adv_obstacles": 8
 }
 
-SCENARIOS = {
-    'Colav-v0': {
-        'entry_point': 'gym_auv.envs:ColavEnv',
-        'config': {
-            "reward_ds": 1,
-            "reward_closeness": -0.5,
-            "reward_speed_error": -0.08,
-            "reward_collision": -1000,
-            "nobstacles": 20,
-            "lidar_range": 40,
-            "obst_reward_range": 15,
-            "t_step_size": 0.1,
-            "cruise_speed": 1.5,
-            "goal_dist": 400,
-            "reward_rudderchange": 0,
-            "min_reward": -500,
-            "end_on_collision": True,
-            "max_timestemps": 10000,
-            "sensor_interval_obstacles": 20,
-            "include_sensor_deltas": False,
-            "n_sensors": 4,
-        }
-    },
-    'PathFollowing-v0': {
-        'entry_point': 'gym_auv.envs:PathFollowingEnv',
-        'config': {
-            "reward_ds": 1,
-            "reward_speed_error": -0.08,
-            "reward_cross_track_error": -0.5,
-            "t_step_size": 0.1,
-            "cruise_speed": 1.5,
-            "la_dist": 10,
-            "goal_dist": 400,
-            "reward_rudderchange": 0,
-            "min_reward": -500,
-            "max_timestemps": 10000,
-            "n_sensors": 0,
-        }
-    },
-    'PathColav-v0': {
-        'entry_point': 'gym_auv.envs:PathColavEnv',
-        'config': DEFAULT_CONFIG
-    },
-    'TestScenario1-v0': {
-        'entry_point': 'gym_auv.envs:TestScenario1',
-        'config': DEFAULT_CONFIG
-    }
-}
-
-for scenario in SCENARIOS:
-    register(
-        id=scenario,
-        entry_point=SCENARIOS[scenario]['entry_point'],
-        #kwargs={'env_config': SCENARIOS[scenario]['config']}
-    )
+register(
+    id='PathColav3d-v0',
+    entry_point='gym_auv.envs:PathColav3d',
+    kwargs={'env_config': pid_pathcolav_config}
+)

@@ -1,7 +1,11 @@
 import numpy as np
-
+import gym_auv.utils.geomutils as geom
+from numpy.linalg import inv
 from math import cos, sin
 
+
+I3 = np.identity(3)
+zero3= 0*I3
 g = 9.81
 
 # AUV parameters
@@ -12,6 +16,7 @@ d = 0.15 #meters
 r = d/2 #meters
 L = 1.08 #meters
 z_G = 0.01 #meters
+r_G = [0,0,z_G] #meters
 thrust_min = 0 #N
 thrust_max = 14 #N
 rudder_max = 30*np.pi/180 #rad
@@ -22,6 +27,11 @@ U_max = 2 #m/s
 I_x = (2/5)*m*r**2
 I_y = (1/5)*m*((L/2)**2 + r**2)
 I_z = I_y
+
+Ig = np.vstack([
+    np.hstack([I_x, 0, 0]),
+    np.hstack([0, I_y, 0]),
+    np.hstack([0, 0, I_z])])
 
 # Added mass parameters (formulas from Fossen(2020))
 e = 1 - (r/(L/2))**2
@@ -37,17 +47,6 @@ Z_wdot = -m*k2
 K_pdot = 0
 M_qdot = -k*I_y
 N_rdot = -k*I_z
-
-# Mass matrix
-M_RB = np.array([[m, 0, 0 ,0 , m*z_G, 0], 
-                 [0, m, 0, -m*z_G, 0, 0], 
-                 [0, 0, m, 0, 0, 0],
-                 [0, -m*z_G, 0, I_x, 0, 0],
-                 [m*z_G, 0, 0, 0, I_y, 0],
-                 [0, 0, 0, 0, 0, I_z]])
-M_A = -np.diag([X_udot, Y_vdot, Z_wdot, K_pdot, M_qdot, N_rdot])
-M = M_RB + M_A
-_M_inv = np.linalg.inv(M)
 
 # Linear damping parameters
 X_u = -2.4 
@@ -81,31 +80,61 @@ x_b = -0.4 #m
 x_fin = -0.4 #m
 rho = 1000 #kg/m^3
 
+# Body Lift
 Z_uwb = -0.5*rho*np.pi*(r**2)*C_LB
 M_uwb = -(-0.65*L-x_b)*Z_uwb
 Y_uvb = Z_uwb
 N_uvb = -M_uwb
 
-Y_uvf = -rho*C_LF*S_fin
-Y_urf = Y_uvf*x_fin
-Z_uwf = -rho*C_LF*S_fin
-Z_uqf = -Z_uwf*x_fin
-M_uwf = -x_fin*Z_uwf
-M_uqf = -x_fin*Z_uqf
-N_uvf = (x_fin)*Y_uvf
+# Fin lift in Y and N 
+Y_uvf = rho*C_LF*S_fin*(-1)
+N_uvf = x_fin*Y_uvf
+Y_urf = rho*C_LF*S_fin*(-x_fin)
 N_urf = x_fin*Y_urf
-
 Y_uudr = rho*C_LF*S_fin
+N_uudr = x_fin*Y_uudr
+
+# Fin lift in Z and M
+Z_uwf = -rho*C_LF*S_fin
+M_uwf = -x_fin*Z_uwf
+Z_uqf = -rho*C_LF*S_fin*(-x_fin)
+M_uqf = -x_fin*Z_uqf
 Z_uuds = -rho*C_LF*S_fin
 M_uuds = -x_fin*Z_uuds
-N_uudr = -x_fin*Y_uudr
+
+def M_RB():
+    M_RB_CG = np.vstack([
+        np.hstack([m*I3, zero3]),
+        np.hstack([zero3, Ig])
+    ])
+
+    M_RB_CO = geom.move_to_CO(M_RB_CG, r_G)
+    return M_RB_CO
+
+
+def M_A():
+    M_A = -np.diag([X_udot, Y_vdot, Z_wdot, K_pdot, M_qdot, N_rdot])
+    return M_A
 
 
 def M_inv():
-    return _M_inv
+    M = M_RB() + M_A()
+    return inv(M)
 
 
-def C(nu):
+def C_RB(nu):
+    nu_2 = nu[3:6]
+
+    Ib = Ig - m*geom.S_skew(r_G).dot(geom.S_skew(r_G))
+
+    C_RB_CO = np.vstack([
+        np.hstack([m*geom.S_skew(nu_2), -m*geom.S_skew(nu_2).dot(geom.S_skew(r_G))]),
+        np.hstack([m*geom.S_skew(r_G).dot(geom.S_skew(nu_2)), -geom.S_skew(Ib.dot(nu_2))])
+    ])
+    return C_RB_CO
+
+
+def C_A(nu):
     u = nu[0]
     v = nu[1]
     w = nu[2]
@@ -114,18 +143,24 @@ def C(nu):
     r = nu[5]
 
     C_11 = np.zeros((3,3))
-    C_12 = np.array([[m*z_G*r, (m-Z_wdot)*w, -(m-Y_vdot)*v],
-                     [-(m-Z_wdot)*w, m*z_G*r, (m-X_udot)*u],
-                     [-m*z_G*p + (m-Y_vdot)*v, -m*z_G*q - (m-X_udot)*u, 0]])
+    C_12 = np.array([[0, -Z_wdot*w, Y_vdot*v],
+                     [Z_wdot*w, 0, -X_udot*u],
+                     [-Y_vdot*v, X_udot*u, 0]])
 
-    C_21 = np.array([[-m*z_G*r, (m-Z_wdot)*w, m*z_G*p - (m-Y_vdot)*v],
-                     [-(m-Z_wdot)*w, -m*z_G*r, m*z_G*q + (m-X_udot)*u],
-                     [(m-Y_vdot)*v, -(m-X_udot)*u, 0]])
+    C_21 = np.array([[0, -Z_wdot*w, Y_vdot*v],
+                     [Z_wdot*w, 0, -X_udot*u],
+                     [-Y_vdot*v, X_udot*u, 0]])
 
-    C_22 = np.array([[0, (I_z-N_rdot)*r, -(I_y-M_qdot)*q],
-                     [-(I_z-N_rdot)*r, 0, (I_x-K_pdot)*p],
-                     [(I_y-M_qdot)*q, -(I_x-K_pdot)*p, 0]])
-    C = np.vstack([np.hstack([C_11, C_12]), np.hstack([C_21, C_22])])
+    C_22 = np.array([[0, -N_rdot*r, M_qdot*q],
+                     [N_rdot*r, 0, -K_pdot*p],
+                     [-M_qdot*q, K_pdot*p, 0]])
+    
+    C_A = np.vstack([np.hstack([C_11, C_12]), np.hstack([C_21, C_22])])
+    return C_A
+
+
+def C(nu):
+    C = C_RB(nu) + C_A(nu)
     return C
 
 

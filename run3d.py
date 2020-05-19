@@ -1,47 +1,30 @@
-import os
-import sys
-import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
-import argparse
-import tensorflow as tf
 import gym
 import gym_auv
+import os
 
-from time import time, sleep
-from gym_auv.envs.pathfollowing3d import PathFollowing3d
-from stable_baselines.common import set_global_seeds
-from stable_baselines.common.policies import MlpPolicy, MlpLstmPolicy
-from stable_baselines.common.vec_env import VecVideoRecorder, DummyVecEnv, SubprocVecEnv
-from stable_baselines.ddpg.policies import LnMlpPolicy
-from stable_baselines import PPO2, DDPG
-from pyglet.window import key
+from gym_auv.utils.controllers import PI, PID
+from mpl_toolkits.mplot3d import Axes3D
+from stable_baselines import PPO2
+from utils import *
 
-env_config = {
-    "reward_ds": 1,
-    "reward_speed_error": -0.08,
-    "reward_cross_track_error": -100,
-    "reward_vertical_track_error": -100,
-    "reward_heading_error": -10,
-    "reward_pitch_error": -10,
-    "reward_rudderchange": -0.01,
-    "t_step": 0.1,
-    "cruise_speed": 1.5,
-    "la_dist": 50,
-    "min_reward": -500,
-    "max_timestemps": 10000}
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 
 if __name__ == "__main__":
-    #agent = PPO2.load(load_path="agent1/521216.pkl")
-    env = PathFollowing3d(env_config)
-    ax = env.path.plot_path(label="Path")
-    for i in range(1000):
-        obs = env.observe()
-        #action = agent.predict(obs)[0]
-        action = np.array([1,1,0])
-        env.step(action)
-    ax.plot3D(env.vessel.path_taken[:, 0], env.vessel.path_taken[:, 1], env.vessel.path_taken[:, 2], label="AUV trajectory")
-    plt.show()
-    #for i in range(12):
-        #plt.plot(env.vessel.state_trajectory[:,i])
-        #plt.show()
+    experiment_dir, agent_path, scenario = parse_experiment_info()
+    env = gym.make("PathColav3d-v0", scenario=scenario)
+    agent = PPO2.load(agent_path)
+    sim_df = simulate_environment(env, agent)
+    sim_df.to_csv(r'simdata.csv')
+    calculate_IAE(sim_df)
+    plot_attitude(sim_df)
+    plot_velocity(sim_df)
+    plot_angular_velocity(sim_df)
+    plot_control_inputs([sim_df])
+    plot_control_errors([sim_df])
+    plot_3d(env, sim_df)
+    plot_current_data(sim_df)
+

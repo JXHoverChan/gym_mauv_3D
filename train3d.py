@@ -1,69 +1,66 @@
 import os
-import sys
-import subprocess
-import numpy as np
-from time import time, sleep
-import argparse
-import tensorflow as tf
 import gym
 import gym_auv
+import stable_baselines.results_plotter as results_plotter
+import numpy as np
+import tensorflow as tf
 
-from gym_auv.envs.pathfollowing3d import PathFollowing3d
-from stable_baselines.common import set_global_seeds
-from stable_baselines.common.policies import MlpPolicy, MlpLstmPolicy
-from stable_baselines.common.vec_env import VecVideoRecorder, DummyVecEnv, SubprocVecEnv
-from stable_baselines.ddpg.policies import LnMlpPolicy
-from stable_baselines import PPO2, DDPG
-
-
-env_config = {
-    "reward_ds": 1,
-    "reward_speed_error": -0.08,
-    "reward_cross_track_error": -100,
-    "reward_vertical_track_error": -100,
-    "reward_heading_error": -10,
-    "reward_pitch_error": -10,
-    "reward_rudderchange": -0.01,
-    "t_step": 0.1,
-    "cruise_speed": 1.5,
-    "la_dist": 50,
-    "min_reward": -500,
-    "max_timestemps": 10000}
+from stable_baselines.bench import Monitor
+from stable_baselines.common.policies import MlpPolicy, LstmPolicy
+from stable_baselines.common.vec_env import SubprocVecEnv, DummyVecEnv
+from stable_baselines import PPO2
+from stable_baselines.results_plotter import load_results, ts2xy
+from stable_baselines.common.schedules import LinearSchedule
+from utils import parse_experiment_info
 
 
-def create_env():
-    env = PathFollowing3d(env_config)
-    return env
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+scenarios = ["beginner", "intermediate", "proficient", "advanced", "expert"]
+hyperparams = {
+    'n_steps': 1024,
+    'nminibatches': 256,
+    'learning_rate': 1e-5,
+    'nminibatches': 32,
+    'lam': 0.95,
+    'gamma': 0.99,
+    'noptepochs': 4,
+    'cliprange': 0.2,
+    'ent_coef': 0.01,
+    'verbose': 2
+    }
+
+
+def callback(_locals, _globals):
+    global n_steps, best_mean_reward
+    if (n_steps + 1) % 5 == 0:
+        _locals['self'].save(os.path.join(agents_dir, "model_" + str(n_steps+1) + ".pkl"))
+    n_steps += 1
+    return True
+
 
 if __name__ == '__main__':
-    num_cpu = 1
-    vec_env = DummyVecEnv([lambda: create_env()])
-
-    hyperparams = {
-        'n_steps': 1024,
-        'nminibatches': 32,
-        'lam': 0.98,
-        'gamma': 0.999,
-        'noptepochs': 4,
-        'ent_coef': 0.01
-    }
+    experiment_dir, _, _ = parse_experiment_info()
     
-    agent = PPO2(MlpPolicy, vec_env, verbose=1, **hyperparams)
-    
-    print('Training {} agent on "{}"'.format('PPO', "Pathfollowing3D"))
+    for i, scen in enumerate(scenarios):
+        agents_dir = os.path.join(experiment_dir, scen, "agents")
+        tensorboard_dir = os.path.join(experiment_dir, scen, "tensorboard")
+        os.makedirs(agents_dir, exist_ok=True)
+        os.makedirs(tensorboard_dir, exist_ok=True)
+        hyperparams["tensorboard_log"] = tensorboard_dir
 
-    n_updates = 0
-    def callback(_locals, _globals):
-        global n_updates
+        num_envs = 4
+        if num_envs > 1:
+            env = SubprocVecEnv([lambda: Monitor(gym.make("PathColav3d-v0", scenario=scen), agents_dir, allow_early_resets=True) for i in range(num_envs)])
+        else:
+            env = DummyVecEnv([lambda: Monitor(gym.make("PathColav3d-v0", scenario=scen), agents_dir, allow_early_resets=True)])
 
-        total_t_steps = _locals['self'].get_env().get_attr('total_t_steps')[0]*num_cpu
-        agent_filepath = os.path.join("agent1", str(total_t_steps) + '.pkl')
-        _locals['self'].save(agent_filepath)
-  
-        n_updates += 1
-        
-    agent.learn(
-        total_timesteps=10000000, 
-        tb_log_name='log',
-        callback=callback
-    )
+        if scen == "beginner":
+            agent = PPO2(MlpPolicy, env, **hyperparams)
+        else:
+            continual_model = os.path.join(experiment_dir, scenarios2[i+1], "agents", "last_model.pkl")
+            agent = PPO2.load(continual_model, env=env, **hyperparams)
+            agent.setup_model()
+        best_mean_reward, n_steps, timesteps = -np.inf, 0, int(300e3 + i*150e3)
+        agent.learn(total_timesteps=timesteps, tb_log_name="PPO2", callback=callback2)
+        save_path = os.path.join(agents_dir, "last_model.pkl")
+        agent.save(save_path)

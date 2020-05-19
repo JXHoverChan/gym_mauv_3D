@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def princip(angle):
+def ssa(angle):
     return ((angle + np.pi) % (2*np.pi)) - np.pi
 
 
@@ -16,8 +16,7 @@ def Rzyx(phi, theta, psi):
     return np.vstack([
         np.hstack([cpsi*cth, -spsi*cphi+cpsi*sth*sphi, spsi*sphi+cpsi*cphi*sth]),
         np.hstack([spsi*cth, cpsi*cphi+sphi*sth*spsi, -cpsi*sphi+sth*spsi*cphi]),
-        np.hstack([-sth, cth*sphi, cth*cphi])
-    ])
+        np.hstack([-sth, cth*sphi, cth*cphi])])
 
 
 def Tzyx(phi, theta, psi):
@@ -26,9 +25,10 @@ def Tzyx(phi, theta, psi):
     cphi = np.cos(phi)
     cth = np.cos(theta)
 
-    return np.vstack([[1, sphi*tth, cphi*tth], 
-                      [0, cphi, -sphi],
-                      [0, sphi/cth, cphi/cth]])
+    return np.vstack([
+        np.hstack([1, sphi*tth, cphi*tth]), 
+        np.hstack([0, cphi, -sphi]),
+        np.hstack([0, sphi/cth, cphi/cth])])
 
 
 def J(eta):
@@ -40,9 +40,9 @@ def J(eta):
     T = Tzyx(phi, theta, psi)
     zero = np.zeros((3,3))
 
-    J = np.vstack([np.hstack([R, zero]),
-                   np.hstack([zero, T])])
-    return J
+    return np.vstack([
+        np.hstack([R, zero]),
+        np.hstack([zero, T])])
 
 
 def S_skew(a):
@@ -50,25 +50,19 @@ def S_skew(a):
     a2 = a[1]
     a3 = a[2]
 
-    S = np.vstack([
+    return np.vstack([
         np.hstack([0, -a3, a2]),
         np.hstack([a3, 0, -a1]),
-        np.hstack([-a2, a1, 0])
-    ])
-
-    return S
+        np.hstack([-a2, a1, 0])])
 
 
 def _H(r):
     I3 = np.identity(3)
-    zero3 = 0*np.identity(3)
+    zero = np.zeros((3,3))
 
-    H = np.vstack([
+    return np.vstack([
         np.hstack([I3, np.transpose(S_skew(r))]),
-        np.hstack([zero3, I3])
-    ])
-
-    return H
+        np.hstack([zero, I3])])
 
 
 def move_to_CO(A_CG, r_g):
