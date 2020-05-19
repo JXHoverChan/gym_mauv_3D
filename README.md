@@ -1,6 +1,6 @@
 # Project Title
 
-This repo implements a 6-DOF simulation model for an AUV according to the stable baselines (OpenAI) interface for reinorcement learning control.
+This repo implements a 6-DOF simulation model for an AUV according to the stable baselines (OpenAI) interface for reinforcement learning control.
 
 ## Getting Started
 
