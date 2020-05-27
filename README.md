@@ -12,7 +12,7 @@ pip install -r requirements.txt
  
 ### Training an agent:
 
-All hyperparameters and setup can be tuned in the file [train.py](https://github.com/simentha/gym-auv/blob/master/train3d.py) and [__init.py](https://github.com/simentha/gym-auv/blob/master/gym_auv/__init.py).
+All hyperparameters and setup can be tuned in the file [train.py](https://github.com/simentha/gym-auv/blob/master/train3d.py) and [__init__.py](https://github.com/simentha/gym-auv/blob/master/gym_auv/__init__.py).
 
 For training an agent, run:
 
