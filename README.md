@@ -1,6 +1,6 @@
-# Project Title
+# Path-following and Collision Avoidance Environment for DRL Control
 
-This repo implements a 6-DOF simulation model for an AUV according to the stable baselines (OpenAI) interface for reinforcement learning control.
+This repo implements a 6-DOF simulation model for an AUV according to the stable baselines (OpenAI) interface for reinforcement learning control. The environment contains a 3D path, obstacles and an ocean current disturbance. The goal for the agents is to steer the AUV on-path while combating disturbances and avoid obstacles along the trajectory. 
 
 ## Getting Started
 
