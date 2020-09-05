@@ -40,7 +40,7 @@ class PathColav3d(gym.Env):
         max_vertical_angle = self.sensor_span[1]/2
         self.sectors_horizontal = np.linspace(-max_horizontal_angle*np.pi/180, max_horizontal_angle*np.pi/180, self.sensor_suite[0])
         self.sectors_vertical =  np.linspace(-max_vertical_angle*np.pi/180, max_vertical_angle*np.pi/180, self.sensor_suite[1])
-        self.update_step = 1/(self.step_size*self.sensor_frequency)
+        self.update_sensor_step= 1/(self.step_size*self.sensor_frequency)
         
         self.scenario_switch = {
             # Training scenarios
@@ -112,9 +112,9 @@ class PathColav3d(gym.Env):
         # Generate AUV
         self.vessel = AUV3D(self.step_size, init_state)
         self.thrust_controller = PI()
+    
 
-        """
-        #PLOT FOR SECTION 3
+    def plot_section3(self):
         plt.rc('lines', linewidth=3)
         ax = self.plot3D(wps_on=False)
         ax.set_xlabel(xlabel="North [m]", fontsize=14)
@@ -130,10 +130,9 @@ class PathColav3d(gym.Env):
         ax.scatter3D(*self.vessel.position, label="Initial Position", color="y")
 
         self.axis_equal3d(ax)
-        #ax.legend(fontsize=14)
+        ax.legend(fontsize=14)
         plt.show()
         a.asjdl     
-        """
 
 
     def step(self, action):
@@ -204,7 +203,7 @@ class PathColav3d(gym.Env):
         obs[13] = self.upsilon_error
 
         # Update nearby obstacles and calculate distances
-        if self.total_t_steps % self.update_step == 0:
+        if self.total_t_steps % self.update_sensor_step == 0:
             self.update_nearby_obstacles()
             self.update_sensor_readings()
             self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
@@ -221,9 +220,7 @@ class PathColav3d(gym.Env):
         step_reward = 0 
 
         reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
-        squared_derivative = self.action_derivative**2
         reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
-        reward_control_derivative = squared_derivative.dot(self.reward_control_derivative)
         reward_path_following = self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error
         reward_collision_avoidance = self.penalize_obstacle_closeness()
 
@@ -314,7 +311,7 @@ class PathColav3d(gym.Env):
                 alpha = self.vessel.heading + self.sectors_horizontal[i]
                 for j in range(self.sensor_suite[1]):
                     beta = self.vessel.pitch + self.sectors_vertical[j]
-                    s, closeness = self.calculate_object_distance(alpha, beta, obstacle)
+                    _, closeness = self.calculate_object_distance(alpha, beta, obstacle)
                     self.sensor_readings[j,i] = max(closeness, self.sensor_readings[j,i]) 
 
 
