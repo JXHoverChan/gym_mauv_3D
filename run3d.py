@@ -6,7 +6,7 @@ import os
 
 from gym_auv.utils.controllers import PI, PID
 from mpl_toolkits.mplot3d import Axes3D
-from stable_baselines import PPO2
+from stable_baselines3 import PPO
 from utils import *
 
 
@@ -16,7 +16,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 if __name__ == "__main__":
     experiment_dir, agent_path, scenario = parse_experiment_info()
     env = gym.make("PathColav3d-v0", scenario=scenario)
-    agent = PPO2.load(agent_path)
+    agent = PPO.load(agent_path)
     sim_df = simulate_environment(env, agent)
     sim_df.to_csv(r'simdata.csv')
     calculate_IAE(sim_df)

@@ -26,11 +26,11 @@ class PathColav3d(gym.Env):
         for key in env_config:
             setattr(self, key, env_config[key])
         self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs + self.sensor_input_size[0]*self.sensor_input_size[1]
-        self.action_space = gym.spaces.Box(low=np.array([-1, -1]),
-                                           high=np.array([1]*self.n_actuators),
+        self.action_space = gym.spaces.Box(low=np.array([-1, -1], dtype=np.float32),
+                                           high=np.array([1]*self.n_actuators, dtype=np.float32),
                                            dtype=np.float32)
-        self.observation_space = gym.spaces.Box(low=np.array([-1]*self.n_observations),
-                                                high=np.array([1]*self.n_observations),
+        self.observation_space = gym.spaces.Box(low=np.array([-1]*self.n_observations, dtype=np.float32),
+                                                high=np.array([1]*self.n_observations, dtype=np.float32),
                                                 dtype=np.float32)
         
         self.scenario = scenario
@@ -66,6 +66,7 @@ class PathColav3d(gym.Env):
         """
         Resets environment to initial state. 
         """
+        #print("ENVIRONMENT RESET INITIATED")
         self.vessel = None
         self.path = None
         self.u_error = None
@@ -96,8 +97,11 @@ class PathColav3d(gym.Env):
         self.reward = 0
 
         self.generate_environment()
+        #print("\tENVIRONMENT GENERATED")
         self.update_control_errors()
+        #print("\tCONTROL ERRORS UPDATED")
         self.observation = self.observe(np.zeros(6, dtype=float))
+        #print("COMPLETE")
         return self.observation
 
 
@@ -107,10 +111,12 @@ class PathColav3d(gym.Env):
         """     
         # Generate training/test scenario
         scenario = self.scenario_switch.get(self.scenario, lambda: print("Invalid scenario"))
+        #print("\tGENERATING", self.scenario.upper())
         init_state = scenario()
-
         # Generate AUV
+        #print("\tGENERATING AUV")
         self.vessel = AUV3D(self.step_size, init_state)
+        #print("\tGENERATING PI-CONTROLLER")
         self.thrust_controller = PI()
     
 
@@ -132,7 +138,7 @@ class PathColav3d(gym.Env):
         self.axis_equal3d(ax)
         ax.legend(fontsize=14)
         plt.show()
-        a.asjdl     
+
 
 
     def step(self, action):
@@ -454,7 +460,9 @@ class PathColav3d(gym.Env):
 
 
     def scenario_intermediate(self):
+        #print("\t\t\tfunc scenario_intermediate init")
         initial_state = self.scenario_beginner()
+        #print("\t\t\tfunc scenario_intermediate got beginner")
         rad = np.random.uniform(4, 10)
         pos = self.path(self.path.length/2)
         self.obstacles.append(Obstacle(radius=rad, position=pos))
@@ -467,21 +475,34 @@ class PathColav3d(gym.Env):
                 continue
             else:
                 self.obstacles.append(obstacle)
+        #print("\n\t\tfunc scenario_intermediate generated", len(self.obstacles), "obstacles")
+        #print("\t\t\tfunc scenario_intermediate exit")
         return initial_state
 
 
     def scenario_proficient(self):
+        #print("\t\tfunc scenario_proficient init")
         initial_state = self.scenario_intermediate()
+        #print("\t\t\tgot intermediate (", len(self.obstacles), " obstacles)", sep="")
         lengths = np.random.uniform(self.path.length*1/3, self.path.length*2/3, self.n_pro_obstacles)
-        while len(self.obstacles) < self.n_pro_obstacles:
+        #print("\t\t\tgot", len(lengths), "lengths")
+        print("")
+        n_checks = 0
+        while len(self.obstacles) < self.n_pro_obstacles and n_checks < 1000:
             for l in lengths:
                 obstacle_radius = np.random.uniform(low=4,high=10)
                 obstacle_coords = self.path(l)
                 obstacle = Obstacle(obstacle_radius, obstacle_coords)
                 if self.check_object_overlap(obstacle):
+                    n_checks += 1
+                    #print("\r\t\t\tOVERLAP CHECK TRIGGERED", n_checks, "TIMES", end="", flush=True)
                     continue
+
                 else:
                     self.obstacles.append(obstacle)
+        print("\t\tfunc scenario_proficient() --> OVERLAP CHECK TRIGGERED", n_checks, "TIMES") if n_checks > 1 else None
+        #print("\n\t\t\t", len(self.obstacles), " obstacles in total", sep="")
+        #print("\t\tfunc scenario_proficient exit")
         return initial_state
 
 
