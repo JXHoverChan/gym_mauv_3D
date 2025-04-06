@@ -20,20 +20,23 @@ test_waypoints = np.array([np.array([0,0,0]), np.array([50,15,5]), np.array([80,
 
 class PathColav3d(gym.Env):
     """
-    Creates an environment with a vessel, a path and obstacles.
+    Creates an environment with a vessel, a path and obstacles. 翻译：创建一个带有船舶、路径和障碍物的环境。
     """
     def __init__(self, env_config, scenario="beginner"):
         for key in env_config:
             setattr(self, key, env_config[key])
-        self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs + self.sensor_input_size[0]*self.sensor_input_size[1]
+        self.n_observations = (self.n_obs_states * self.num_vessels+ 
+                               self.n_obs_errors * self.num_vessels+ 
+                               self.n_obs_inputs * self.num_vessels+ 
+                               self.sensor_input_size[0]* self.sensor_input_size[1]* self.num_vessels)
         self.action_space = gym.spaces.Box(low=np.array([-1, -1], dtype=np.float32),
-                                           high=np.array([1]*self.n_actuators, dtype=np.float32),
-                                           dtype=np.float32)
+                                        high=np.array([1]*self.n_actuators, dtype=np.float32),
+                                        dtype=np.float32)    # 创建动作空间
         self.observation_space = gym.spaces.Box(low=np.array([-1]*self.n_observations, dtype=np.float32),
                                                 high=np.array([1]*self.n_observations, dtype=np.float32),
-                                                dtype=np.float32)
+                                                dtype=np.float32)   # 创建观察空间
         
-        self.scenario = scenario
+        self.scenario = scenario    # 训练场景
         
         self.n_sensor_readings = self.sensor_suite[0]*self.sensor_suite[1]
         max_horizontal_angle = self.sensor_span[0]/2
@@ -49,6 +52,7 @@ class PathColav3d(gym.Env):
             "proficient": self.scenario_proficient,
             "advanced": self.scenario_advanced,
             "expert": self.scenario_expert,
+            "m_beginner": self.scenario_beginner_multi,  # Multi-vessel beginner scenario
             # Testing scenarios
             "test_path": self.scenario_test_path,
             "test_path_current": self.scenario_test_path_current,
@@ -67,10 +71,10 @@ class PathColav3d(gym.Env):
         Resets environment to initial state. 
         """
         #print("ENVIRONMENT RESET INITIATED")
-        self.vessel = None
-        self.path = None
-        self.u_error = None
-        self.e = None
+        self.vessel = None  # AUV object
+        self.path = None    # Path object
+        self.u_error = None # Cruise speed error
+        self.e = None    # Cross-track error
         self.h = None
         self.chi_error = None
         self.upsilon_error = None
@@ -78,13 +82,11 @@ class PathColav3d(gym.Env):
         self.prog = 0
         self.path_prog = []
         self.success = False
-
         self.obstacles = []
         self.nearby_obstacles = []
         self.sensor_readings = np.zeros(shape=self.sensor_suite, dtype=float)
         self.collided = False
         self.penalize_control = 0.0
-
         self.observation = None
         self.action_derivative = np.zeros(self.n_actuators)
         self.past_states = []
@@ -92,15 +94,45 @@ class PathColav3d(gym.Env):
         self.past_errors = []
         self.past_obs = []
         self.current_history = []
+
+        # For multiple vessels
+        self.vessels = []  # Clear vessels list, in case of multiple vessels
+        self.multivessels_sensor_readings = np.zeros((self.num_vessels, self.sensor_suite[0], self.sensor_suite[1]), dtype=float) # Sensor readings for multiple vessels
+        self.multivessels_collided = np.zeros(self.num_vessels, dtype=bool) # Track collisions for multiple vessels
+        self.multivessels_current_history = [[] for _ in range(self.num_vessels)]
+        self.u_error_multi = [None for _ in range(self.num_vessels)]  # Cruise speed error for multiple vessels
+        self.chi_error_multi = [None for _ in range(self.num_vessels)]  # Course error for multiple vessels
+        self.e_multi = [None for _ in range(self.num_vessels)]  # Cross-track error for multiple vessels
+        self.upsilon_error_multi = [None for _ in range(self.num_vessels)]  # Elevation error for multiple vessels
+        self.h_multi = [None for _ in range(self.num_vessels)]  # Additional error term for multiple vessels
+        self.prog_multi = [0 for _ in range(self.num_vessels)]  # Progress along the path for each vessel, initialized to 0
+        self.path_prog_multi = [[] for _ in range(self.num_vessels)]  # Track progress along the path for each vessel
+        self.success_multi = [False for _ in range(self.num_vessels)]  # Success flags for multiple vessels
+        self.path_multi = [None for _ in range(self.num_vessels)]  # Path objects for multiple vessels
+        self.past_actions_multi = [[] for _ in range(self.num_vessels)]  # Past actions for multiple vessels
+        self.action_derivative_multi = np.zeros((self.num_vessels, self.n_actuators))  # Action derivatives for multiple vessels
+        self.past_states_multi = [[] for _ in range(self.num_vessels)]  # Past states for multiple vessels
+        self.past_errors_multi = [[] for _ in range(self.num_vessels)]  # Past errors for multiple vessels
+        # self.path_multi = [None for _ in range(self.num_vessels)]  # Path objects for multiple vessels, initialized to None
+        self.waypoint_index_multi = [0 for _ in range(self.num_vessels)]  # Waypoint index for multiple vessels
+        self.observation_multi = [None for _ in range(self.num_vessels)]  # Observations for multiple vessels
+        self.past_obs_multi = [[] for _ in range(self.num_vessels)]  # Past observations for multiple vessels
+        self.nearby_obstacles_multi = [[] for _ in range(self.num_vessels)]  # Nearby obstacles for multiple vessels, initialized to empty lists
+
         self.time = []
         self.total_t_steps = 0
         self.reward = 0
 
         self.generate_environment()
         #print("\tENVIRONMENT GENERATED")
-        self.update_control_errors()
+        if self.num_vessels == 1:
+            self.update_control_errors()
+        elif self.num_vessels > 1:
+            # For multiple vessels, update control errors for each vessel
+            self.update_control_errors_multi()
         #print("\tCONTROL ERRORS UPDATED")
         self.observation = self.observe(np.zeros(6, dtype=float))
+        self.observation_multi = [self.observe(np.zeros(6, dtype=float)) for _ in range(self.num_vessels)]  # Initialize observations for multiple vessels
         #print("COMPLETE")
         return self.observation
 
@@ -115,9 +147,20 @@ class PathColav3d(gym.Env):
         init_state = scenario()
         # Generate AUV
         #print("\tGENERATING AUV")
-        self.vessel = AUV3D(self.step_size, init_state)
-        #print("\tGENERATING PI-CONTROLLER")
-        self.thrust_controller = PI()
+        if self.num_vessels == 1:
+            self.vessel = AUV3D(self.step_size, init_state)
+            print("\tGENERATING PI-CONTROLLER")
+            self.thrust_controller = PI()   # PI-controller for thrust
+
+        elif self.num_vessels > 1:
+            # For multiple vessels, create a list of AUVs
+            for i in range(self.num_vessels):
+                # Create a new AUV for each vessel with a unique initial state
+                self.vessels.append(AUV3D(self.step_size, init_state[i]))  # Pass the i-th initial state for multiple vessels
+            print("\tGENERATING PI-CONTROLLER for multiple vessels")
+            self.thrust_controllers = [PI() for _ in range(self.num_vessels)]  # One controller per vessel
+
+
     
 
     def plot_section3(self):
@@ -133,13 +176,17 @@ class PathColav3d(gym.Env):
         ax.set_yticks([-50, 0, 50])
         ax.set_zticks([-50, 0, 50])
         ax.view_init(elev=-165, azim=-35)
-        ax.scatter3D(*self.vessel.position, label="Initial Position", color="y")
+        if self.num_vessels == 1:
+            ax.scatter3D(*self.vessel.position, label="Initial Position", color="y")
+
+        # For multiple vessels, plot their initial positions
+        elif self.num_vessels > 1:
+            for i, vessel in enumerate(self.vessels):
+                ax.scatter3D(*vessel.position, label="Initial Position Vessel {}".format(i+1), color="y")
 
         self.axis_equal3d(ax)
         ax.legend(fontsize=14)
         plt.show()
-
-
 
     def step(self, action):
         """
@@ -157,7 +204,7 @@ class PathColav3d(gym.Env):
         action = np.clip(action, np.array([0, -1, -1]), np.array([1, 1, 1]))
         if len(self.past_actions) > 0:
             self.action_derivative = (action[1:]-self.past_actions[-1][1:])/(self.step_size)
-
+        
         self.vessel.step(action, nu_c)
         self.past_states.append(np.copy(self.vessel.state))
         self.past_errors.append(np.array([self.u_error, self.chi_error, self.e, self.upsilon_error, self.h]))
@@ -173,7 +220,7 @@ class PathColav3d(gym.Env):
                 print("Passed waypoint {:d}".format(k+1))
                 self.waypoint_index = k
         
-        # Calculate reward based on observation and actions
+        # Calculate reward based on observation and actions 翻译：根据观察和行动计算奖励
         done, step_reward = self.step_reward(self.observation, action)
         info = {}
 
@@ -187,40 +234,121 @@ class PathColav3d(gym.Env):
         
         return self.observation, step_reward, done, info
 
+    def step_multi(self, actions):
+        """
+        Simulates the environment for multiple vessels one time-step.
+        """
+        # Simulate Current
+        self.current.sim()
+        nu_c_multi = [self.current(vessel.state) for vessel in self.vessels]
+        for i in range(self.num_vessels):
+            self.multivessels_current_history[i].append(nu_c_multi[i][0: 3])
+        
+        # Simulate AUV dynamics for each vessel one time-step and save action and state
+        self.update_control_errors_multi()
+        thrust_multi = [self.thrust_controllers[i].u(self.u_error_multi[i]) for i in range(self.num_vessels)]
+        # print("\tThrust Multi:", thrust_multi)  # Debugging: Print thrust for each vessel
+        actions_multi = [np.hstack((thrust_multi[i], actions[i])) for i in range(self.num_vessels)]  # Combine thrust with other actions for each vessel
+        # print("\tActions Multi:", actions_multi)  # Debugging: Print actions for each vessel
+        for i in range(self.num_vessels):
+            # Clip actions for each vessel
+            actions_multi[i] = np.clip(actions_multi[i], np.array([0, -1, -1]), np.array([1, 1, 1]))
+            if len(self.past_actions_multi[i]) > 0:
+                self.action_derivative_multi[i] = (actions_multi[i][1:]-self.past_actions_multi[i][-1][1:])/(self.step_size)  # Calculate action derivative for each vessel
+            
+            # print("actions_multi: {}".format(actions_multi))  # Debugging: Print actions for each vessel
+            # print("nu_c_multi[{}]: {}".format(i, nu_c_multi[i]))  # Debugging: Print current for each vessel
+
+            self.vessels[i].step(actions_multi[i], nu_c_multi[i])  # Step the i-th vessel
+            self.past_states_multi[i].append(np.copy(self.vessels[i].state))  # Save the state of the i-th vessel
+            self.past_errors_multi[i].append(np.array([self.u_error_multi[i], self.chi_error_multi[i], self.e_multi[i], self.upsilon_error_multi[i], self.h_multi[i]]))
+            self.past_actions_multi[i].append(self.vessels[i].input)  # Save the input of the i-th vessel
+            if self.path_multi[i]:
+                # Update progress along the path for each vessel
+                self.prog_multi[i] = self.path_multi[i].get_closest_u(self.vessels[i].position, self.waypoint_index_multi[i])
+                self.path_prog_multi[i].append(self.prog_multi[i])
+                
+                # Check if a waypoint is passed for each vessel
+                k = self.path_multi[i].get_u_index(self.prog_multi[i])
+                if k > self.waypoint_index_multi[i]:
+                    print("Vessel {:d} passed waypoint {:d}".format(i+1, k+1))
+                    self.waypoint_index_multi[i] = k
+            # Calculate reward based on observation and actions for each vessel
+            # print("actions_multi[{}]: {}".format(i, actions_multi[i]))  # Debugging: Print actions for each vessel
+            done, step_reward = self.step_reward_multi(self.observe(nu_c_multi[i]), actions_multi[i])
+            self.observation_multi[i] = self.observe(nu_c_multi[i])  # Update observation for the i-th vessel
+            self.past_obs_multi[i].append(self.observation_multi[i])  # Save the observation for the i-th vessel
+        
+        self.total_t_steps += 1  # Increment total time steps
+        self.time.append(self.total_t_steps*self.step_size)  # Save the current simulation time
+
+        # Return the observations, rewards, done flags, and info for multiple vessels
+        return self.observation_multi, step_reward, done, {}  # Return observations for multiple vessels, total reward, done flag, and info
+
 
     def observe(self, nu_c):
         """
         Returns observations of the environment. 
         """
-        obs = np.zeros((self.n_observations,))
-        obs[0] = np.clip(self.vessel.relative_velocity[0] / 2, -1, 1)
-        obs[1] = np.clip(self.vessel.relative_velocity[1] / 0.3, -1, 1)
-        obs[2] = np.clip(self.vessel.relative_velocity[2] / 0.3, -1, 1)
-        obs[3] = np.clip(self.vessel.roll / np.pi, -1, 1)
-        obs[4] = np.clip(self.vessel.pitch / np.pi, -1, 1)
-        obs[5] = np.clip(self.vessel.heading / np.pi, -1, 1)
-        obs[6] = np.clip(self.vessel.angular_velocity[0] / 1.2, -1, 1)
-        obs[7] = np.clip(self.vessel.angular_velocity[1] / 0.4, -1, 1)
-        obs[8] = np.clip(self.vessel.angular_velocity[2] / 0.4, -1, 1)
-        obs[9] = np.clip(nu_c[0] / 1, -1, 1)
-        obs[10] = np.clip(nu_c[1] / 1, -1, 1)
-        obs[11] = np.clip(nu_c[2] / 1, -1, 1)
-        obs[12] = self.chi_error
-        obs[13] = self.upsilon_error
+        if self.num_vessels == 1:
+            obs = np.zeros((self.n_observations,))
+            obs[0] = np.clip(self.vessel.relative_velocity[0] / 2, -1, 1)
+            obs[1] = np.clip(self.vessel.relative_velocity[1] / 0.3, -1, 1)
+            obs[2] = np.clip(self.vessel.relative_velocity[2] / 0.3, -1, 1)
+            obs[3] = np.clip(self.vessel.roll / np.pi, -1, 1)
+            obs[4] = np.clip(self.vessel.pitch / np.pi, -1, 1)
+            obs[5] = np.clip(self.vessel.heading / np.pi, -1, 1)
+            obs[6] = np.clip(self.vessel.angular_velocity[0] / 1.2, -1, 1)
+            obs[7] = np.clip(self.vessel.angular_velocity[1] / 0.4, -1, 1)
+            obs[8] = np.clip(self.vessel.angular_velocity[2] / 0.4, -1, 1)
+            obs[9] = np.clip(nu_c[0] / 1, -1, 1)
+            obs[10] = np.clip(nu_c[1] / 1, -1, 1)
+            obs[11] = np.clip(nu_c[2] / 1, -1, 1)
+            obs[12] = self.chi_error
+            obs[13] = self.upsilon_error
+        elif self.num_vessels > 1:
+            """
+            For multiple vessels, construct the observation for each vessel and concatenate them.
+            """
+            obs = np.zeros((self.num_vessels, self.n_observations // self.num_vessels))
+            for i in range(self.num_vessels):
+                obs[i][0] = np.clip(self.vessels[i].relative_velocity[0] / 2, -1, 1)
+                obs[i][1] = np.clip(self.vessels[i].relative_velocity[1] / 0.3, -1, 1)
+                obs[i][2] = np.clip(self.vessels[i].relative_velocity[2] / 0.3, -1, 1)
+                obs[i][3] = np.clip(self.vessels[i].roll / np.pi, -1, 1)
+                obs[i][4] = np.clip(self.vessels[i].pitch / np.pi, -1, 1)
+                obs[i][5] = np.clip(self.vessels[i].heading / np.pi, -1, 1)
+                obs[i][6] = np.clip(self.vessels[i].angular_velocity[0] / 1.2, -1, 1)
+                obs[i][7] = np.clip(self.vessels[i].angular_velocity[1] / 0.4, -1, 1)
+                obs[i][8] = np.clip(self.vessels[i].angular_velocity[2] / 0.4, -1, 1)
+                obs[i][9] = np.clip(nu_c[0]/1, -1, 1)
+                obs[i][10] = np.clip(nu_c[1]/1, -1, 1)
+                obs[i][11] = np.clip(nu_c[2]/1, -1, 1)
+                obs[i][12] = self.chi_error_multi[i]  # Course error for the i-th vessel
+                obs[i][13] = self.upsilon_error_multi[i]  # Elevation error for the i-th vessel
 
         # Update nearby obstacles and calculate distances
         if self.total_t_steps % self.update_sensor_step == 0:
-            self.update_nearby_obstacles()
-            self.update_sensor_readings()
-            self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
+            if self.num_vessels == 1:
+                self.update_nearby_obstacles()
+                self.update_sensor_readings()
+                self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
+                obs[14:] = self.sonar_observations.flatten()
+            else:
+                self.update_nearby_obstacles_multi()
+                self.update_sensor_readings_multi()
+                self.sonar_observations_multi = np.zeros((self.num_vessels, self.sensor_input_size[0], self.sensor_input_size[1]), dtype=float)
+                for i in range(self.num_vessels):
+                    self.sonar_observations_multi[i] = skimage.measure.block_reduce(self.multivessels_sensor_readings[i], (2,2), np.max)
+                    obs[i][14:] = self.sonar_observations_multi[i].flatten()
             #self.update_sensor_readings_with_plots() #(Debugging)
-        obs[14:] = self.sonar_observations.flatten()
         return obs
 
 
     def step_reward(self, obs, action):
         """
         Calculates the reward function for one time step. Also checks if the episode should end. 
+        翻译： 计算一个时间步的奖励函数。还检查是否应该结束该集。
         """
         done = False
         step_reward = 0 
@@ -255,6 +383,46 @@ class PathColav3d(gym.Env):
             print("Episode finished after {} timesteps with reward: {}".format(self.total_t_steps, self.reward.round(1)))
             done = True
         return done, step_reward
+    
+    def step_reward_multi(self, obs_multi, actions_multi):
+        """
+        Calculates the reward function for multiple vessels for one time step. Also checks if the episode should end.
+        """
+        done = False
+        step_reward_sum = 0
+        for i in range(self.num_vessels):
+            obs = obs_multi[i]
+            action = actions_multi
+            # print("Action", action) #Debugging
+            reward_roll = self.vessels[i].roll**2*self.reward_roll + self.vessels[i].angular_velocity[0]**2*self.reward_rollrate
+            reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
+            reward_path_following = self.chi_error_multi[i]**2*self.reward_heading_error + self.upsilon_error_multi[i]**2*self.reward_pitch_error
+            reward_collision_avoidance = self.penalize_obstacle_closeness()
+
+            step_reward = self.lambda_reward*reward_path_following + (1-self.lambda_reward)*reward_collision_avoidance \
+                        + reward_roll + reward_control
+            step_reward_sum += step_reward
+
+            # Check collision for each vessel
+            for obstacle in self.nearby_obstacles_multi[i]:
+                if np.linalg.norm(obstacle.position - self.vessels[i].position) <= obstacle.radius + self.vessels[i].safety_radius:
+                    self.multivessels_collided[i] = True
+        self.reward += step_reward_sum
+
+        end_cond_1 = self.reward < self.min_reward*self.num_vessels  # Adjusted for multiple vessels
+        end_cond_2 = self.total_t_steps >= self.max_t_steps
+        end_cond_3 = all(np.linalg.norm(self.path_multi[i].get_endpoint()-self.vessels[i].position) < self.accept_rad and self.waypoint_index_multi[i] == self.n_waypoints-2 for i in range(self.num_vessels))
+        end_cond_4 = all(abs(self.prog_multi[i] - self.path_multi[i].length) <= self.accept_rad/2.0 for i in range(self.num_vessels))
+        if end_cond_1 or end_cond_2 or end_cond_3 or end_cond_4:
+            if end_cond_3:
+                print("All vessels reached target!")
+                self.success_multi = [True for _ in range(self.num_vessels)]
+            elif any(self.multivessels_collided):
+                print("At least one vessel collided!")
+                self.success_multi = [False for _ in range(self.num_vessels)]
+            print("Episode finished after {} timesteps with total reward: {}".format(self.total_t_steps, self.reward.round(1)))
+            done = True
+        return done, step_reward_sum
 
 
     def update_control_errors(self):
@@ -287,6 +455,40 @@ class PathColav3d(gym.Env):
         #self.h = np.clip(h/12, -1, 1)
         self.h = h
 
+    def update_control_errors_multi(self):
+        """
+        For multiple vessels support, updates the control errors for each vessel in the environment.
+        """
+        for i, vessel in enumerate(self.vessels):
+            # Update cruise speed error
+            self.u_error_multi[i] = np.clip((self.cruise_speed - vessel.relative_velocity[0])/2, -1, 1)
+            self.chi_error_multi[i] = 0.0
+            self.e_multi[i] = 0.0
+            self.upsilon_error_multi[i] = 0.0
+            self.h_multi[i] = 0.0
+
+            # Get path course and elevation
+            s = self.prog_multi[i]
+            chi_p, upsilon_p = self.path_multi[i].get_direction_angles(s)
+            # Calculate tracking errors
+            SF_rotation = geom.Rzyx(0, upsilon_p, chi_p)
+            epsilon = np.transpose(SF_rotation).dot(vessel.position - self.path_multi[i](s))  # Note: self.path_multi[i] should be the path for the i-th vessel
+            e = epsilon[1]
+            h = epsilon[2]
+
+            # Calculate course and elevation errors from tracking errors
+            chi_r = np.arctan2(-e, self.la_dist)
+            upsilon_r = np.arctan2(h, np.sqrt(e**2 + self.la_dist**2))
+            chi_d = chi_p + chi_r
+            upsilon_d = upsilon_p + upsilon_r
+            self.chi_error_multi[i] = np.clip(geom.ssa(vessel.chi - chi_d)/np.pi, -1, 1)
+            #self.e_multi[i] = np.clip(e/12, -1, 1)
+            self.e_multi[i] = e  # Keep it as is for now, to match the single vessel case
+            self.upsilon_error_multi[i] = np.clip(geom.ssa(vessel.upsilon - upsilon_d)/np.pi, -1, 1)
+            #self.h_multi[i] = np.clip(h/12, -1, 1)
+            self.h_multi[i] = h  # Keep it as is for now, to match the single vessel case
+
+
 
     def update_nearby_obstacles(self):
         """
@@ -306,6 +508,25 @@ class PathColav3d(gym.Env):
             elif distance <= obstacle.radius + self.vessel.safety_radius:
                 self.nearby_obstacles.append(obstacle)
 
+    def update_nearby_obstacles_multi(self):
+        """
+        Updates the nearby_obstacles array for multiple vessels.
+        """
+        for i, vessel in enumerate(self.vessels):
+            self.nearby_obstacles_multi[i] = []
+            for obstacle in self.obstacles:
+                distance_vec_NED = obstacle.position - vessel.position
+                distance = np.linalg.norm(distance_vec_NED)
+                distance_vec_BODY = np.transpose(geom.Rzyx(*vessel.attitude)).dot(distance_vec_NED)
+                heading_angle_BODY = np.arctan2(distance_vec_BODY[1], distance_vec_BODY[0])
+                pitch_angle_BODY = np.arctan2(distance_vec_BODY[2], np.sqrt(distance_vec_BODY[0]**2 + distance_vec_BODY[1]**2))
+                # check if the obstacle is inside the sonar window
+                if distance - vessel.safety_radius - obstacle.radius <= self.sonar_range and abs(heading_angle_BODY) <= self.sensor_span[0]*np.pi/180 \
+                and abs(pitch_angle_BODY) <= self.sensor_span[1]*np.pi/180:
+                    self.nearby_obstacles_multi[i].append(obstacle)
+                elif distance <= obstacle.radius + vessel.safety_radius:
+                    self.nearby_obstacles_multi[i].append(obstacle)
+
 
     def update_sensor_readings(self):
         """
@@ -320,6 +541,19 @@ class PathColav3d(gym.Env):
                     _, closeness = self.calculate_object_distance(alpha, beta, obstacle)
                     self.sensor_readings[j,i] = max(closeness, self.sensor_readings[j,i]) 
 
+    def update_sensor_readings_multi(self):
+        """
+        Updates the sonar data closeness array for multiple vessels.
+        """
+        for i, vessel in enumerate(self.vessels):
+            self.multivessels_sensor_readings[i] = np.zeros(shape=self.sensor_suite, dtype=float)
+            for obstacle in self.nearby_obstacles_multi[i]:
+                for j in range(self.sensor_suite[0]):
+                    alpha = vessel.heading + self.sectors_horizontal[j]
+                    for k in range(self.sensor_suite[1]):
+                        beta = vessel.pitch + self.sectors_vertical[k]
+                        _, closeness = self.calculate_object_distance(alpha, beta, obstacle)
+                        self.multivessels_sensor_readings[i][k,j] = max(closeness, self.multivessels_sensor_readings[i][k,j])
 
     def update_sensor_readings_with_plots(self):
         """
@@ -413,6 +647,19 @@ class PathColav3d(gym.Env):
             ax.plot_surface(*obstacle.return_plot_variables(), color='r')
         return self.axis_equal3d(ax)
 
+    def plot3D_multi(self, ax, wps_on=True):
+        """
+        Returns 3D plot of path and obstacles for multiple vessels.
+        """
+        axes = []
+        for i in range(self.num_vessels):
+            ax1 = self.path_multi[i].plot_path(ax, i, wps_on)
+            for obstacle in self.obstacles:
+                # Plot obstacles on each vessel's path
+                ax1.plot_surface(*obstacle.return_plot_variables(), color='r')
+            # Set the axes for each vessel
+            axes.append(self.axis_equal3d(ax1))
+        return axes  # Return the list of axes for multiple vessels
 
     def axis_equal3d(self, ax):
         """
@@ -457,6 +704,25 @@ class PathColav3d(gym.Env):
         init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
+
+    def scenario_beginner_multi(self):
+        """
+        For multiple vessels, initialize the beginner scenario.
+        """
+        initial_state_multi = []
+        self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0)
+        for i in range(self.num_vessels):
+            waypoints = generate_random_waypoints(self.n_waypoints)
+            self.path_multi[i] = QPMI(waypoints)
+            # Random initial position for each vessel
+            init_pos = [np.random.uniform(0,2)*(-5), np.random.normal(0,1)*5, np.random.normal(0,1)*5]
+            # Get the initial attitude based on the path direction at the start
+            init_attitude = np.array([0, self.path_multi[i].get_direction_angles(0)[1], self.path_multi[i].get_direction_angles(0)[0]])
+            # Combine position and attitude for the initial state of the i-th vessel
+            initial_state = np.hstack([init_pos, init_attitude])
+            initial_state_multi.append(initial_state)  # Append the initial state for the i-th vessel
+        # Return the initial state for all vessels
+        return initial_state_multi
 
 
     def scenario_intermediate(self):
@@ -557,7 +823,9 @@ class PathColav3d(gym.Env):
         return initial_state
         """
 
-
+    """
+    原论文的测试场景，保持不变
+    """
     def scenario_test_current(self):
         initial_state = self.scenario_test()
         self.current = Current(mu=0, Vmin=0.75, Vmax=0.75, Vc_init=0.75, alpha_init=np.pi/4, beta_init=np.pi/6, t_step=0) # Constant velocity current (reproducability for report)
@@ -609,3 +877,39 @@ class PathColav3d(gym.Env):
         init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
+    
+
+
+if __name__ == "__main__":
+    """
+    Test the environment by creating an instance and plotting the 3D path with obstacles.
+    """
+    env_config = {
+        "n_waypoints": 5,
+        "n_int_obstacles": 2,
+        "n_pro_obstacles": 5,
+        "n_adv_obstacles": 10,
+        "max_t_steps": 1000,
+        "step_size": 1.0,
+        "sensor_suite": (10,10),
+        "sensor_span": (60,30), # degrees
+        "sonar_range": 50,
+        "reward_roll": -0.1,
+        "reward_rollrate": -0.1,
+        "reward_use_rudder": -0.1,
+        "reward_use_elevator": -0.1,
+        "reward_heading_error": -1.0,
+        "reward_pitch_error": -1.0,
+        "lambda_reward": 0.5,
+        "min_reward": -100
+    }
+    env = PathColav3d(env_config, scenario="test_path")
+    env.plot_section3()
+
+    """
+    Test the environment with multiple vessels
+    """
+    env_config_multi = env_config.copy()
+    env_config_multi["num_vessels"] = 2  # Set number of vessels
+    env_multi = PathColav3d(env_config_multi, scenario="test_path")
+    env_multi.plot_section3()  # Plot for multiple vessels

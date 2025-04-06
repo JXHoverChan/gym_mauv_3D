@@ -33,7 +33,8 @@ pid_pathcolav_config = {
     "n_waypoints": 7,
     "n_int_obstacles": 1,
     "n_pro_obstacles": 3,
-    "n_adv_obstacles": 8
+    "n_adv_obstacles": 8,
+    "num_vessels": 3 # Number of vessels (ships) in the environment, default is 0 for path following
 }
 
 register(

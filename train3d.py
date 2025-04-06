@@ -60,6 +60,15 @@ def make_env(env_id: str, scenario: str, rank: int, seed: int = 0) -> Callable:
     :param rank: (int) index of the subprocess
     :return: (Callable)
     """
+    """
+    翻译 多处理环境的实用程序函数。
+
+    :param env_id: (str) 环境ID
+    :param num_env: (int) 您希望在子进程中拥有的环境数量
+    :param seed: (int) RNG的初始种子
+    :param rank: (int) 子进程的索引
+    :return: (Callable)
+    """
 
     def _init() -> gym.Env:
         #env = gym.make(env_id, scenario=scenario)
@@ -91,10 +100,12 @@ if __name__ == '__main__':
                 [lambda: Monitor(gym.make("PathColav3d-v0", scenario=scen), agents_dir, allow_early_resets=True)
                 for i in range(num_envs)]
             )
+            # env.render(mode='human')  # Optional: render the environment for visual feedback
         else:
             env = DummyVecEnv(
-                [lambda: Monitor(gym.make("PathColav3d-v0", scenario=scen), agents_dir, allow_early_resets=True)]
+                [lambda: Monitor(gym.make("PathColav3d-v0", scenario=scen), agents_dir)]
             )
+        # env.render(mode='human')  # Optional: render the environment for visual feedback
         print("DONE")
 
         print("INITIALIZING AGENT...", end="")
@@ -108,7 +119,9 @@ if __name__ == '__main__':
         best_mean_reward, n_steps, timesteps = -np.inf, 0, int(300e3 + i*150e3)
         print("TRAINING FOR", timesteps, "TIMESTEPS")
         agent.learn(total_timesteps=timesteps, tb_log_name="PPO2", callback=callback2)
+        # env.render(mode='human')  # Optional: render the environment for visual feedback
         print("FINISHED TRAINING AGENT IN", scen.upper())
         save_path = os.path.join(agents_dir, "last_model.pkl")
         agent.save(save_path)
         print("SAVE SUCCESSFUL")
+        

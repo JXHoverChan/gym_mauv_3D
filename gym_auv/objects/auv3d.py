@@ -18,6 +18,18 @@ def odesolver45(f, y, h, nu_c):
         q: float. Order 4 approx.
         w: float. Order 5 approx.
     """
+
+    """
+    翻译：
+    计算由f描述的时间不变ODE的IVP的下一步，其中f的RHS，具有4阶近似和5阶近似。
+    参数：
+        f：函数。ODE的RHS。
+        y：浮点数。当前位置。
+        h：浮点数。步长。
+    返回：
+        q：浮点数。4阶近似。
+        w：浮点数。5阶近似。
+    """
     s1 = f(y, nu_c)
     s2 = f(y + h*s1/4.0, nu_c)
     s3 = f(y + 3.0*h*s1/32.0 + 9.0*h*s2/32.0, nu_c)
@@ -52,59 +64,58 @@ def odesolver45(f, y, h, nu_c):
     return w, q
 """
 
-
 class AUV3D():
     """
-    Implementation of AUV dynamics. 
+    Implementation of AUV dynamics.     翻译：AUV动力学的实现。
     """
     def __init__(self, step_size, init_eta, safety_radius=1):
-        self.state = np.hstack([init_eta, np.zeros((6,))])
-        self.step_size = step_size
+        self.state = np.hstack([init_eta, np.zeros((6,))])  # AUV状态，[N, E, D, phi, theta, psi, u, v, w, p, q, r]，前六个是位置，后六个是速度
+        self.step_size = step_size  # 步长
         #self.alpha = self.step_size/(self.step_size + 1)
-        self.alpha = self.step_size/(self.step_size + 0.2)
-        self.input = np.zeros(3)
-        self.position_dot = np.zeros(3)
-        self.safety_radius = safety_radius
+        self.alpha = self.step_size/(self.step_size + 0.2)  # 低通滤波器的系数，用于平滑舵角和升降舵角
+        self.input = np.zeros(3)    # 输入，[推进力，舵角，升降舵角]
+        self.position_dot = np.zeros(3) # 位置导数
+        self.safety_radius = safety_radius  # 安全半径
         self.safety_radius = 1
 
 
     def step(self, action, nu_c):
-        prev_rudder_angle = self.input[1]
-        prev_elevator_angle = self.input[2]
+        prev_rudder_angle = self.input[1] # 舵角
+        prev_elevator_angle = self.input[2] # 升降舵角
 
         # Un-normalize actions from neural network
-        thrust = _surge(action[0])
-        commanded_rudder = _steer(action[1])
-        commanded_elevator = _steer(action[2])
+        thrust = _surge(action[0])  # 推进力
+        commanded_rudder = _steer(action[1])    # 舵角
+        commanded_elevator = _steer(action[2])  # 升降舵角
         # Lowpass filter the rudder and elevator
-        rudder_angle = self.alpha*commanded_rudder + (1-self.alpha)*prev_rudder_angle
-        elevator_angle = self.alpha*commanded_elevator + (1-self.alpha)*prev_elevator_angle
+        rudder_angle = self.alpha*commanded_rudder + (1-self.alpha)*prev_rudder_angle   # 低通滤波器，平滑舵角
+        elevator_angle = self.alpha*commanded_elevator + (1-self.alpha)*prev_elevator_angle # 低通滤波器，平滑升降舵角
 
         #self.input = np.array([thrust, commanded_rudder, commanded_elevator])
-        self.input = np.array([thrust, rudder_angle, elevator_angle])
-        self._sim(nu_c)
+        self.input = np.array([thrust, rudder_angle, elevator_angle])   # 输入，[推进力，舵角，升降舵角]
+        self._sim(nu_c) # 模拟
 
 
     def _sim(self, nu_c):
         #self.state += self.state_dot(nu_c)*self.step_size
-        w, q = odesolver45(self.state_dot, self.state, self.step_size, nu_c)
+        w, q = odesolver45(self.state_dot, self.state, self.step_size, nu_c)    # 用4阶和5阶近似计算下一步
         #self.state = q
         self.state = w
         self.state[3] = geom.ssa(self.state[3])
         self.state[4] = geom.ssa(self.state[4])
-        self.state[5] = geom.ssa(self.state[5])
+        self.state[5] = geom.ssa(self.state[5]) # 归一化
         self.position_dot = self.state_dot(self.state, nu_c)[0:3]
 
 
     def state_dot(self, state, nu_c):
         """
-        The right hand side of the 12 ODEs governing the AUV dyanmics.
+        The right hand side of the 12 ODEs governing the AUV dyanmics.   翻译：控制AUV动力学的12个ODE的右手边。
         """
-        eta = self.state[:6]
-        nu_r = self.state[6:]
+        eta = self.state[:6]    # 位置
+        nu_r = self.state[6:]   # 速度
 
-        eta_dot = geom.J(eta).dot(nu_r+nu_c)
-        nu_r_dot = ss.M_inv().dot(
+        eta_dot = geom.J(eta).dot(nu_r+nu_c)    # 位置导数
+        nu_r_dot = ss.M_inv().dot(  # 速度导数
             ss.B(nu_r).dot(self.input)
             - ss.D(nu_r).dot(nu_r)
             - ss.C(nu_r).dot(nu_r)
@@ -115,7 +126,7 @@ class AUV3D():
     @property
     def position(self):
         """
-        Returns an array holding the position of the AUV in NED
+        Returns an array holding the position of the AUV in NED     翻译：返回一个数组，其中包含AUV在NED中的位置
         coordinates.
         """
         return self.state[0:3]
@@ -124,56 +135,56 @@ class AUV3D():
     @property
     def attitude(self):
         """
-        Returns an array holding the attitude of the AUV wrt. to NED coordinates.
+        Returns an array holding the attitude of the AUV wrt. to NED coordinates.   翻译：返回一个数组，其中包含AUV相对于NED坐标的姿态。
         """
         return self.state[3:6]
 
     @property
     def heading(self):
         """
-        Returns the heading of the AUV wrt true north.
+        Returns the heading of the AUV wrt true north.  翻译：返回AUV相对于真北的航向。
         """
         return geom.ssa(self.state[5])
 
     @property
     def pitch(self):
         """
-        Returns the pitch of the AUV wrt NED.
+        Returns the pitch of the AUV wrt NED.   翻译：返回AUV相对于NED的俯仰。
         """
         return geom.ssa(self.state[4])
 
     @property
     def roll(self):
         """
-        Returns the roll of the AUV wrt NED.
+        Returns the roll of the AUV wrt NED.    翻译：返回AUV相对于NED的滚动。
         """
         return geom.ssa(self.state[3])
 
     @property
     def relative_velocity(self):
         """
-        Returns the surge, sway and heave velocity of the AUV.
+        Returns the surge, sway and heave velocity of the AUV.  翻译：返回AUV的前进、摇摆和起伏速度。
         """
         return self.state[6:9]
 
     @property
     def relative_speed(self):
         """
-        Returns the length of the velocity vector of the AUV.
+        Returns the length of the velocity vector of the AUV.   翻译：返回AUV速度矢量的长度。
         """
         return np.linalg.norm(self.relative_velocity)
 
     @property
     def angular_velocity(self):
         """
-        Returns the rate of rotation about the NED frame.
+        Returns the rate of rotation about the NED frame.   翻译：返回围绕NED框架的旋转速率。
         """
         return self.state[9:12]
     
     @property
     def chi(self):
         """
-        Returns the rate of rotation about the NED frame.
+        Returns the rate of rotation about the NED frame.   翻译：返回围绕NED框架的旋转速率。
         """
         [N_dot, E_dot, D_dot] = self.position_dot
         return np.arctan2(E_dot, N_dot)
@@ -181,7 +192,7 @@ class AUV3D():
     @property
     def upsilon(self):
         """
-        Returns the rate of rotation about the NED frame.
+        Returns the rate of rotation about the NED frame.   翻译：返回围绕NED框架的旋转速率。
         """
         [N_dot, E_dot, D_dot] = self.position_dot
         return np.arctan2(-D_dot, np.sqrt(N_dot**2 + E_dot**2))

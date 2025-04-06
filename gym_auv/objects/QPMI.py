@@ -202,20 +202,20 @@ class QPMI():
     def get_endpoint(self):
         return self(self.length)
 
-    def plot_path(self, wps_on=True):
+    def plot_path(self, ax, k, wps_on=True):
         u = np.linspace(self.us[0], self.us[-1], 10000)
         quadratic_path = []
         for du in u:
                 quadratic_path.append(self(du))
                 self.get_direction_angles(du)
         quadratic_path = np.array(quadratic_path)
-        ax = plt.axes(projection='3d')
-        ax.plot3D(xs=quadratic_path[:,0], ys=quadratic_path[:,1], zs=quadratic_path[:,2], color="#3388BB", label="Path")
+        ax.plot3D(xs=quadratic_path[:,0], ys=quadratic_path[:,1], zs=quadratic_path[:,2], color="#3388BB", label="Path for vessel {num}".format(num = k+1))
         if wps_on:
             for i, wp in enumerate(self.waypoints):
-                if i == 1: ax.scatter3D(*wp, color="#EE6666", label="Waypoints")
+                if i == 1: ax.scatter3D(*wp, color="#EE6666", label="Waypoints for vessel {num}".format(num = k+1))
                 else: ax.scatter3D(*wp, color="#EE6666")
         return ax
+
 
 
 def generate_random_waypoints(nwaypoints):

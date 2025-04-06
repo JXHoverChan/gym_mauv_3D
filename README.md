@@ -1,38 +1,33 @@
-# Path-following and Collision Avoidance Environment for DRL Control
+# 路径跟踪与避障环境用于深度强化学习控制
 
-This repo implements a 6-DOF simulation model for an AUV according to the stable baselines (OpenAI) interface for reinforcement learning control. The environment contains a 3D path, obstacles and an ocean current disturbance. The goal for the agents is to steer the AUV on-path while combating disturbances and avoid obstacles along the trajectory. 
+此仓库实现了一个用于AUV（自主水下航行器）的6自由度仿真模型，符合稳定基线（OpenAI）接口，用于强化学习控制。环境包含一个3D路径、障碍物以及海洋流干扰。代理的目标是引导AUV沿路径航行，同时克服干扰并避开轨迹上的障碍物。
 
-## Getting Started
+## 快速开始
 
-To install all packages needed in your virtual environment, run:
+在虚拟环境中安装所需的所有软件包，请运行：
 
 ```
 conda env create -f environment.yml
 ```
- 
-### Training an agent:
 
-All hyperparameters and setup can be tuned in the file [train.py](https://github.com/simentha/gym-auv/blob/master/train3d.py) and [__init__.py](https://github.com/simentha/gym-auv/blob/master/gym_auv/__init__.py).
+### 训练代理：
 
-For training an agent, run:
+所有超参数和设置可以在文件 [train.py](https://github.com/simentha/gym-auv/blob/master/train3d.py) 和 [__init__.py](https://github.com/simentha/gym-auv/blob/master/gym_auv/__init__.py) 中调整。
+
+要训练代理，请运行：
 
 ```
 python train.py --exp_id [x]
 ```
 
-Where x is the experiment id number. 
+其中 x 是实验编号。
 
+## 在环境中运行代理
 
-## Running an agent in the environment
-
-For running an agent in any scenario, use:
+要在任何场景中运行代理，请使用：
 
 ```
 python run.py --exp_id [x] --scenario [scenario] --controller_scenario [controller_scenario] --controller [y]
 ```
 
-Where x is the experiment id number, scenario is what scenario to run, controller_scenario is which scenario the controller was trained in and y is
-which agent number to run. If no y is provided, the agent called "last_model.pkl" is chosen. Scenarios can be either of "beginner", "intermediate",
-"proficient", "advanced", "expert", "test_path", "test_path_current" (Path following with disturbance), "horizontal", "vertical" or "deadend". 
-
-
+其中 x 是实验编号，scenario 是要运行的场景，controller_scenario 是控制器训练的场景，y 是要运行的代理编号。如果未提供 y，则选择名为 "last_model.pkl" 的代理。场景可以是 "beginner"（初学者）、"intermediate"（中级）、"proficient"（熟练）、"advanced"（高级）、"expert"（专家）、"test_path"（测试路径）、"test_path_current"（带干扰的路径跟踪）、"horizontal"（水平）、"vertical"（垂直）或 "deadend"（死胡同）。
