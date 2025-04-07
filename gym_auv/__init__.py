@@ -23,7 +23,7 @@ pid_pathcolav_config = {
     "sensor_span": (140,140), # the horizontal and vertical span of the sensors
     "sensor_suite": (15, 15), # the number of sensors covering the horizontal and vertical span
     "sensor_input_size": (8,8), # the shape of FLS data passed to the neural network. Max pooling from raw data is used
-    "sensor_frequency": 1,
+    "sensor_frequency": 10,
     "sonar_range": 25,
     "n_obs_errors": 2,
     "n_obs_inputs": 0,

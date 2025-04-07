@@ -213,13 +213,18 @@ class QPMI():
         if wps_on:
             for i, wp in enumerate(self.waypoints):
                 if i == 1: ax.scatter3D(*wp, color="#EE6666", label="Waypoints for vessel {num}".format(num = k+1))
+                # Special color for the first waypoint
+                elif i == 0: ax.scatter3D(*wp, color="Red", label="Start point for vessel {num}".format(num = k+1))
                 else: ax.scatter3D(*wp, color="#EE6666")
         return ax
 
 
 
 def generate_random_waypoints(nwaypoints):
-    waypoints = [np.array([0,0,0])]
+    # waypoints 的初始点是随机的
+    waypoints = [np.array([np.random.uniform(-30, 0),
+                          np.random.uniform(-20, 0),
+                          np.random.uniform(-10, 0)])]  # Start with a random point in 3D space
     for i in range(nwaypoints-1):
         distance = 50
         azimuth = np.random.uniform(-np.pi/4, np.pi/4)

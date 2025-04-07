@@ -20,14 +20,13 @@ if __name__ == "__main__":
     agent = PPO.load(agent_path)
     sim_df = simulate_environment_multi_vessels(env, agent)
     sim_df.to_csv(r'simdata_m.csv')
-    # num_vessels = 3
     # sim_df = pd.read_csv(r'simdata_m.csv')  # Reload to ensure we have the latest data
-    # calculate_IAE_multi_vessels(sim_df, num_vessels)
-    # plot_attitude_multi_vessels(sim_df, num_vessels)
-    # plot_velocity_multi_vessels(sim_df, num_vessels)
-    # plot_angular_velocity_vessels(sim_df, num_vessels)
-    # plot_control_inputs_multi_vessels([sim_df], num_vessels)
-    # plot_control_errors_multi_vessels([sim_df], num_vessels)
+    calculate_IAE_multi_vessels(sim_df, env.num_vessels)
+    plot_attitude_multi_vessels(sim_df, env.num_vessels)
+    plot_velocity_multi_vessels(sim_df, env.num_vessels)
+    plot_angular_velocity_vessels(sim_df, env.num_vessels)
+    plot_control_inputs_multi_vessels([sim_df], env.num_vessels)
+    plot_control_errors_multi_vessels([sim_df], env.num_vessels)
     plot_multiple_3d(env, sim_df, env.num_vessels)
-    # plot_current_data(sim_df)
+    plot_current_data_multi_vessels(sim_df, env.num_vessels)
 

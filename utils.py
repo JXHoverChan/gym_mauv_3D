@@ -17,7 +17,7 @@ def parse_experiment_info():
     """翻译 用于解析可以与运行/训练/测试脚本一起传递的标志的解析器。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_id", type=int, help="Which experiment number to run/train/test")
-    parser.add_argument("--scenario", default="m_beginner", type=str, help="Which scenario to run")
+    parser.add_argument("--scenario", default="m_advanced", type=str, help="Which scenario to run")
     parser.add_argument("--controller_scenario", default="expert", type=str, help="Which scenario the agent was trained in")
     parser.add_argument("--controller", default=None, type=int, help="Which model to load as main controller. Requires only integer")
     args = parser.parse_args()
@@ -122,12 +122,13 @@ def simulate_environment_multi_vessels(env, agent):
     env.reset()
     # env.render(mode='human')  # Optional: render the environment for visual feedback
     while not done:
-        actions = []
+        # actions = [None for _ in range(env.num_vessels)]  # Initialize actions for each vessel
         for i in range(env.num_vessels):
             actions = agent.predict(env.observation_multi[i], deterministic=True)[0]  # Predict for each vessel
             # actions.append(action)
         # print("Actions for all vessels: ", actions) #Debugging line to see the actions for each vessel
         _, _, done, _ = env.step_multi(actions)  # Step the environment with actions for all vessels
+        # print(actions) # Debugging line to see the actions taken by each vessel
     errors = np.array(env.past_errors_multi)  # Collect errors for all vessels
     time = np.array(env.time).reshape((env.total_t_steps, 1))
     sim_data = [[] for _ in range(env.num_vessels)]  # Initialize a list to hold simulation data for each vessel
@@ -353,10 +354,10 @@ def plot_multiple_3d(env, sim_dfs, num_vessels):
             color="#EECC55",
             label="AUV Path Vessel {}".format(i + 1)
         )  # Plot the path for each vessel
-        axes[i].set_xlabel(xlabel="North [m]", fontsize=14)
-        axes[i].set_ylabel(ylabel="East [m]", fontsize=14)
-        axes[i].set_zlabel(zlabel="Down [m]", fontsize=14)
-        axes[i].legend(loc="upper right", fontsize=5)  # Add legend for each vessel
+        axes[i].set_xlabel(xlabel="North [m]", fontsize=10)
+        axes[i].set_ylabel(ylabel="East [m]", fontsize=10)
+        axes[i].set_zlabel(zlabel="Down [m]", fontsize=10)
+        axes[i].legend(loc="upper right", fontsize=8)  # Add legend for each vessel
         
     plt.show()
     
@@ -384,6 +385,22 @@ def plot_current_data(sim_df):
     ax2.grid(color='k', linestyle='-', linewidth=0.1)
     plt.show()
     """
+
+def plot_current_data_multi_vessels(sim_df, num_vessels):
+    set_default_plot_rc()
+    color = ["#EE6666", "#3388BB", "#88DD89"]
+    for i in range(num_vessels):
+        """
+        Plot current data for each vessel in the multi-vessel simulation
+        """
+        # Plot current intensity
+        ax1 = sim_df.plot(x="Time", y=[r"$u_c{}$".format(i), r"$v_c{}$".format(i), r"$w_c{}".format(i)], linewidth=4, style=["-", "-", "-"], color=color[i])
+        ax1.set_title("Current Intensity for Vessel {}".format(i + 1), fontsize=18)
+        ax1.set_xlabel(xlabel="Time [s]", fontsize=12)
+        ax1.set_ylabel(ylabel="Velocity [m/s]", fontsize=12)
+        ax1.set_ylim([-1.25, 1.25])
+        ax1.legend(loc="upper right", fontsize=8)
+    plt.show()
 
 
 def plot_collision_reward_function():
