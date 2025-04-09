@@ -57,10 +57,10 @@ class DQACA:
             return self.epsilon_0 * (self.max_iter - iter) / self.max_iter
 
     def run(self):
-        best_paths = None
+        self.best_paths = None
         best_distance = np.inf
-        totaldistances = []
-        bestdistances = []
+        self.totaldistances = []
+        self.bestdistances = []
         for iteration in range(self.max_iter):
             all_paths = []
             total_distances = []
@@ -121,7 +121,7 @@ class DQACA:
                 # 更新最优解
                 if total_dist < best_distance:
                     best_distance = total_dist
-                    best_paths = paths
+                    self.best_paths = paths
                     
             # 动态Q信息素更新
             delta_pheromone = np.zeros_like(self.pheromone)
@@ -145,9 +145,40 @@ class DQACA:
             # 早停条件：连续20代无改进
             if iteration > 20 and len(set(total_distances[-20:])) == 1:
                 break
-            totaldistances.append(total_distances)
-            bestdistances.append(best_distance)
-        return best_paths, best_distance, totaldistances, bestdistances
+            self.totaldistances.append(total_distances)
+            self.bestdistances.append(best_distance)
+        return self.best_paths, best_distance, self.totaldistances, self.bestdistances
+    
+    def data_plot(self):
+        """绘制距离变化图"""
+        plt.figure()
+        plt.plot(range(len(self.bestdistances)), self.bestdistances, label='Best Distance')
+        plt.plot(range(len(self.totaldistances)), [min(d) for d in self.totaldistances], label='Total Distance')
+        plt.xlabel('Iteration')
+        plt.ylabel('Distance')
+        plt.title('Best Distance Over Iterations')
+        plt.legend()
+        plt.show()
+
+    def route_plot(self):
+        """绘制路径图"""
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        # 绘制所有点
+        all_points = np.vstack([self.all_points])
+        ax.scatter(all_points[:, 0], all_points[:, 1], all_points[:, 2], c='b', marker='o')
+        # 绘制路径
+        for i, path in enumerate(self.best_paths):
+            point_path = [self.all_points[n] for n in path]
+            xs = [p[0] for p in point_path]
+            ys = [p[1] for p in point_path]
+            zs = [p[2] for p in point_path]
+            ax.plot(xs, ys, zs, label=f'AUV {i+1}')
+        ax.set_xlabel('X Coordinate')
+        ax.set_ylabel('Y Coordinate')
+        ax.set_zlabel('Z Coordinate')
+        ax.legend()
+        plt.show()
 
 # 示例使用
 if __name__ == "__main__":
@@ -157,7 +188,7 @@ if __name__ == "__main__":
         'beta': 10,
         'rho': 0.1,
         'Q': 100,
-        'max_iter': 2000,
+        'max_iter': 20,
         'ant_count': 51,
         'epsilon_0': 0.1
     }
@@ -186,38 +217,14 @@ if __name__ == "__main__":
 
     # 结果解析
     print(f"最优总距离: {best_distance}")
+    waypoints = []
     for i, path in enumerate(best_paths):
         point_path = [solver.all_points[n] for n in path]
+        waypoints.append(point_path)
         print(f"AUV {i+1} 的路径:")
         for p in point_path:
             print(f"({p[0]}, {p[1]}, {p[2]})")
         print()
-
-    # Plotting the results
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    # 绘制所有点
-    all_points = np.vstack([start_points, task_points])
-    ax.scatter(all_points[:, 0], all_points[:, 1], all_points[:, 2], c='b', marker='o')
-    # 绘制路径
-    for i, path in enumerate(best_paths):
-        point_path = [solver.all_points[n] for n in path]
-        xs = [p[0] for p in point_path]
-        ys = [p[1] for p in point_path]
-        zs = [p[2] for p in point_path]
-        ax.plot(xs, ys, zs, label=f'AUV {i+1}')
-    ax.set_xlabel('X Coordinate')
-    ax.set_ylabel('Y Coordinate')
-    ax.set_zlabel('Z Coordinate')
-    ax.legend()
-    plt.show()
-
-    # 绘制距离变化图
-    plt.figure()
-    plt.plot(range(len(best)), best, label='Best Distance')
-    plt.plot(range(len(total)), [min(d) for d in total], label='Total Distance')
-    plt.xlabel('Iteration')
-    plt.ylabel('Distance')
-    plt.title('Best Distance Over Iterations')
-    plt.legend()
-    plt.show()
+    print("所有AUV的路径:")
+    for wp in waypoints:
+        print(wp)

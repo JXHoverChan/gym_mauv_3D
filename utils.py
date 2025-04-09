@@ -87,7 +87,7 @@ def simulate_environment(env, agent):
     error_labels = [r"e", r"h"]
     return df
 
-def simulate_environment_multi_vessels(env, agent):
+def simulate_environment_multi_vessels(env, agent, waypoints=None):
     global error_labels_multi, current_labels_multi, input_labels_multi, state_labels_multi
     labels = []
     for i in range(env.num_vessels):
@@ -273,11 +273,11 @@ def plot_control_inputs_multi_vessels(sim_dfs, num_vessels):
     Plot control inputs from simulation data for multiple vessels
     """
     set_default_plot_rc()
-    c = ['#EE6666', '#88BB44', '#EECC55']
+    c = ['#EE6666', '#88BB44', '#EECC55', '#3388BB']
     for i in range(num_vessels):
         for j, sim_df in enumerate(sim_dfs):
             control = np.sqrt(sim_df[r"$\delta_r_{"+str(i)+"}$"]**2 + sim_df[r"$\delta_s_{"+str(i)+"}$"]**2) # Calculate control input for each vessel
-            plt.plot(sim_df["Time"], sim_df[r"$\delta_s_{"+str(i)+"}$"], linewidth=4, color=c[i], label=r"$\lambda_r={}$".format([0.9, 0.5, 0.1][j]))
+            plt.plot(sim_df["Time"], sim_df[r"$\delta_s_{"+str(i)+"}$"], linewidth=4, color=c[i], label=r"$vessel_{}$".format(i+1))
     plt.xlabel(xlabel="Time [s]", fontsize=14)
     plt.ylabel(ylabel="Normalized Input", fontsize=14)
     # plt.legend(loc="lower right", fontsize=14)
@@ -295,7 +295,7 @@ def plot_control_errors(sim_dfs):
     c = ['#EE6666', '#88BB44', '#EECC55']
     for i, sim_df in enumerate(sim_dfs):
         error = np.sqrt(sim_df[r"e"]**2+sim_df[r"h"]**2)
-        plt.plot(sim_df["Time"], error, linewidth=4, color=c[i])
+        plt.plot(sim_df["Time"], error, linewidth=4, color=c[i], linestyle='-')
     plt.xlabel(xlabel="Time [s]", fontsize=12)
     plt.ylabel(ylabel="Tracking Error [m]", fontsize=12)
     #plt.ylim([0,15])
@@ -307,11 +307,11 @@ def plot_control_errors_multi_vessels(sim_dfs, num_vessels):
     Plot control errors from simulation data for multiple vessels
     """
     set_default_plot_rc()
-    c = ['#EE6666', '#88BB44', '#EECC55']
+    c = ['#EE6666', '#88BB44', '#EECC55', '#3388BB']
     for i in range(num_vessels):
         for j, sim_df in enumerate(sim_dfs):
             error = np.sqrt(sim_df[r"e_{}".format(i)]**2 + sim_df[r"h_{}".format(i)]**2)  # Calculate tracking error for each vessel
-            plt.plot(sim_df["Time"], error, linewidth=4, color=c[i], label=r"$vessel_{}$".format(i+1) + r" ($\lambda_r={}$)".format([0.9, 0.5, 0.1][j]))
+            plt.plot(sim_df["Time"], error, linewidth=4, color=c[i], linestyle='-', label=r"$vessel_{}$".format(i+1))
     plt.xlabel(xlabel="Time [s]", fontsize=14)
     plt.ylabel(ylabel="Tracking Error [m]", fontsize=14)
     # plt.ylim([0, 15])  # Set y-limits for better visibility
@@ -384,7 +384,7 @@ def plot_current_data(sim_df):
 
 def plot_current_data_multi_vessels(sim_df, num_vessels):
     set_default_plot_rc()
-    color = ["#EE6666", "#3388BB", "#88DD89"]
+    color = ["#EE6666", "#3388BB", "#88DD89", '#EECC55']
     for i in range(num_vessels):
         """
         Plot current data for each vessel in the multi-vessel simulation

@@ -22,9 +22,11 @@ class PathColav3d(gym.Env):
     """
     Creates an environment with a vessel, a path and obstacles. 翻译：创建一个带有船舶、路径和障碍物的环境。
     """
-    def __init__(self, env_config, scenario="beginner"):
+    def __init__(self, env_config, waypoints, scenario="beginner"):
         for key in env_config:
             setattr(self, key, env_config[key])
+        
+        self.waypoints = waypoints
         self.n_observations = (self.n_obs_states * self.num_vessels+ 
                                self.n_obs_errors * self.num_vessels+ 
                                self.n_obs_inputs * self.num_vessels+ 
@@ -165,10 +167,7 @@ class PathColav3d(gym.Env):
                 # Create a new AUV for each vessel with a unique initial state
                 self.vessels.append(AUV3D(self.step_size, init_state[i]))  # Pass the i-th initial state for multiple vessels
             print("\tGENERATING PI-CONTROLLER for multiple vessels")
-            self.thrust_controllers = [PI() for _ in range(self.num_vessels)]  # One controller per vessel
-
-
-    
+            self.thrust_controllers = [PID() for _ in range(self.num_vessels)]  # One controller per vessel
 
     def plot_section3(self):
         plt.rc('lines', linewidth=3)
@@ -738,10 +737,11 @@ class PathColav3d(gym.Env):
         initial_state_multi = []
         self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0)
         for i in range(self.num_vessels):
-            waypoints = generate_random_waypoints(self.n_waypoints)
-            self.path_multi[i] = QPMI(waypoints)
+            # waypoints = generate_random_waypoints(self.n_waypoints)
+            waypoints = self.waypoints
+            self.path_multi[i] = QPMI(waypoints[i])
             # Random initial position for each vessel
-            init_pos = [np.random.uniform(0,2)*(-5), np.random.normal(0,1)*5, np.random.normal(0,1)*5]
+            init_pos = [np.random.uniform(0,1)*(-1), np.random.normal(0,1)*1, np.random.normal(0,1)*1]
             # Get the initial attitude based on the path direction at the start
             init_attitude = np.array([0, self.path_multi[i].get_direction_angles(0)[1], self.path_multi[i].get_direction_angles(0)[0]])
             # Combine position and attitude for the initial state of the i-th vessel
