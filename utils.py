@@ -134,10 +134,6 @@ def simulate_environment_multi_vessels(env, agent):
     sim_data = [[] for _ in range(env.num_vessels)]  # Initialize a list to hold simulation data for each vessel
     for i in range(env.num_vessels):
         # Collect simulation data for each vessel
-        # print("Past states for vessel {}: {}".format(i, env.past_states_multi[i][-1:])) # Debugging line to see the last row of past states for each vessel
-        # print("Past actions for vessel {}: {}".format(i, env.past_actions_multi[i][-1:])) # Debugging line to see the last row of past actions for each vessel
-        # print("Errors for vessel {}: {}".format(i, errors[i][-1:])) # Debugging line to see the last row of errors for each vessel
-        # print("Current history for vessel {}: {}".format(i, env.multivessels_current_history[i][-1:])) # Debugging line to see the current history for each vessel
         sim_data[i] = np.hstack([env.past_states_multi[i],
                                 env.past_actions_multi[i],
                                 errors[i],
