@@ -17,7 +17,7 @@ def parse_experiment_info():
     """翻译 用于解析可以与运行/训练/测试脚本一起传递的标志的解析器。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_id", type=int, help="Which experiment number to run/train/test")
-    parser.add_argument("--scenario", default="m_advanced", type=str, help="Which scenario to run")
+    parser.add_argument("--scenario", default="m_beginner", type=str, help="Which scenario to run")
     parser.add_argument("--controller_scenario", default="expert", type=str, help="Which scenario the agent was trained in")
     parser.add_argument("--controller", default=None, type=int, help="Which model to load as main controller. Requires only integer")
     args = parser.parse_args()

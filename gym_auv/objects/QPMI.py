@@ -222,9 +222,9 @@ class QPMI():
 
 def generate_random_waypoints(nwaypoints):
     # waypoints 的初始点是随机的
-    waypoints = [np.array([np.random.uniform(-30, 0),
-                          np.random.uniform(-20, 0),
-                          np.random.uniform(-10, 0)])]  # Start with a random point in 3D space
+    waypoints = [np.array([np.random.uniform(-100, 100),
+                          np.random.uniform(-100, 100),
+                          np.random.uniform(-50, 0)])]  # Start with a random point in 3D space
     for i in range(nwaypoints-1):
         distance = 50
         azimuth = np.random.uniform(-np.pi/4, np.pi/4)

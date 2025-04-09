@@ -56,10 +56,12 @@ class PathColav3d(gym.Env):
             "m_intermediate": self.scenario_intermediate_multi,
             "m_proficient": self.scenario_proficient_multi,
             "m_advanced": self.scenario_advanced_multi,
+            "m_expert": self.scenario_expert_multi,
             # Testing scenarios
             "test_path": self.scenario_test_path,
             "m_test_path": self.scenario_test_path_multi,  # Multi-vessel test path
             "test_path_current": self.scenario_test_path_current,
+            "m_test_path_current": self.scenario_test_path_multi_current,  # Multi-vessel test path with current
             "test": self.scenario_test,
             "m_test": self.scenario_test_multi,  # Multi-vessel test
             "test_current": self.scenario_test_current,
@@ -928,7 +930,12 @@ class PathColav3d(gym.Env):
     def scenario_test_path_current(self):
         initial_state = self.scenario_test_path()
         self.current = Current(mu=0, Vmin=0.75, Vmax=0.75, Vc_init=0.75, alpha_init=np.pi/4, beta_init=np.pi/6, t_step=0)
-        return initial_state 
+        return initial_state
+
+    def scenario_test_path_multi_current(self):
+        initial_state_multi = self.scenario_test_path_multi()
+        self.current = Current(mu=0, Vmin=0.75, Vmax=0.75, Vc_init=0.75, alpha_init=np.pi/4, beta_init=np.pi/6, t_step=0)
+        return initial_state_multi 
 
 
     def scenario_test(self):
