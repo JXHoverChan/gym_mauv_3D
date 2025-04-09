@@ -12,7 +12,8 @@ conda env create -f environment.yml
 
 ### 训练代理：
 
-使用原项目(https://github.com/ThomasNLarsen/gym-auv-3D)进行单机控制器agent训练，放入log文件夹
+使用原项目 (https://github.com/ThomasNLarsen/gym-auv-3D)
+进行单机控制器agent训练，放入log文件夹
 项目中已有2种agent，第一个适用于PI控制器，第二个适用于PID控制器
 
 ## 在环境中运行代理
