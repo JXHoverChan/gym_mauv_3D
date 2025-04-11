@@ -152,8 +152,11 @@ class DQACA:
     def data_plot(self):
         """绘制距离变化图"""
         plt.figure()
+        # 每20代的平均距离
+        average_distances = [np.mean(d) for d in self.totaldistances]
+        plt.plot(range(len(average_distances)), average_distances, label='Average Distance')
         plt.plot(range(len(self.bestdistances)), self.bestdistances, label='Best Distance')
-        plt.plot(range(len(self.totaldistances)), [min(d) for d in self.totaldistances], label='Total Distance')
+        # plt.plot(range(len(self.totaldistances)), [min(d) for d in self.totaldistances], label='Average Distance')
         plt.xlabel('Iteration')
         plt.ylabel('Distance')
         plt.title('Best Distance Over Iterations')

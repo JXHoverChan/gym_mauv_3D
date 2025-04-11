@@ -215,6 +215,7 @@ class QPMI():
                 if i == 1: ax.scatter3D(*wp, color="#EE6666", label="Waypoints for vessel {num}".format(num = k+1))
                 # Special color for the first waypoint
                 elif i == 0: ax.scatter3D(*wp, color="Red", label="Start point for vessel {num}".format(num = k+1))
+                elif i == len(self.waypoints)-1: ax.scatter3D(*wp, color="Green", label="End point for vessel {num}".format(num = k+1))
                 else: ax.scatter3D(*wp, color="#EE6666")
         return ax
 

@@ -167,7 +167,7 @@ class PathColav3d(gym.Env):
                 # Create a new AUV for each vessel with a unique initial state
                 self.vessels.append(AUV3D(self.step_size, init_state[i]))  # Pass the i-th initial state for multiple vessels
             print("\tGENERATING PI-CONTROLLER for multiple vessels")
-            self.thrust_controllers = [PID() for _ in range(self.num_vessels)]  # One controller per vessel
+            self.thrust_controllers = [PI() for _ in range(self.num_vessels)]  # One controller per vessel
 
     def plot_section3(self):
         plt.rc('lines', linewidth=3)

@@ -17,7 +17,7 @@ def parse_experiment_info():
     """翻译 用于解析可以与运行/训练/测试脚本一起传递的标志的解析器。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_id", type=int, help="Which experiment number to run/train/test")
-    parser.add_argument("--scenario", default="m_beginner", type=str, help="Which scenario to run")
+    parser.add_argument("--scenario", default="m_intermediate", type=str, help="Which scenario to run")
     parser.add_argument("--controller_scenario", default="expert", type=str, help="Which scenario the agent was trained in")
     parser.add_argument("--controller", default=None, type=int, help="Which model to load as main controller. Requires only integer")
     args = parser.parse_args()
@@ -166,8 +166,8 @@ def set_default_plot_rc():
     plt.rc('axes', facecolor='#ffffff', edgecolor='black',
         axisbelow=True, grid=True, prop_cycle=colors)
     plt.rc('grid', color='gray', linestyle='--')
-    plt.rc('xtick', direction='out', color='black', labelsize=14)
-    plt.rc('ytick', direction='out', color='black', labelsize=14)
+    plt.rc('xtick', direction='out', color='black', labelsize=10)
+    plt.rc('ytick', direction='out', color='black', labelsize=10)
     plt.rc('patch', edgecolor='#ffffff')
     plt.rc('lines', linewidth=4)
 
@@ -177,8 +177,8 @@ def plot_attitude(sim_df):
     set_default_plot_rc()
     ax = sim_df.plot(x="Time", y=[r"$\phi$",r"$\theta$", r"$\psi$"], kind="line")
     ax.set_xlabel(xlabel="Time [s]",fontsize=14)
-    ax.set_ylabel(ylabel="Angular position [rad]",fontsize=14)
-    ax.legend(loc="lower right", fontsize=14)
+    ax.set_ylabel(ylabel="Angular position [rad]",fontsize=10)
+    ax.legend(loc="lower right", fontsize=10)
     ax.set_ylim([-np.pi,np.pi])
     plt.show()
 
@@ -193,9 +193,9 @@ def plot_attitude_multi_vessels(sim_df, num_vessels):
         """
         set_default_plot_rc()
         ax = sim_df.plot(x="Time", y=[r"$\phi_{}$".format(i), r"$\theta_{}$".format(i), r"$\psi_{}$".format(i)], kind="line")
-        ax.set_xlabel(xlabel="Time [s]", fontsize=14)
-        ax.set_ylabel(ylabel="Angular position [rad]", fontsize=14)
-        ax.legend(loc="lower right", fontsize=14)
+        ax.set_xlabel(xlabel="Time [s]", fontsize=10)
+        ax.set_ylabel(ylabel="Angular position [rad]", fontsize=10)
+        ax.legend(loc="lower right", fontsize=10)
         ax.set_ylim([-np.pi, np.pi])
         plt.title("Attitude for Vessel {}".format(i+1))
         plt.show()
@@ -206,9 +206,9 @@ def plot_velocity(sim_df):
     ax = sim_df.plot(x="Time", y=[r"$u$",r"$v$"], kind="line")
     ax.plot(sim_df["Time"], sim_df[r"$w$"], dashes=[3,3], color="#88DD89", label=r"$w$")
     ax.plot([0,sim_df["Time"].iloc[-1]], [1.5,1.5], label=r"$u_d$")
-    ax.set_xlabel(xlabel="Time [s]", fontsize=14)
-    ax.set_ylabel(ylabel="Velocity [m/s]", fontsize=14)
-    ax.legend(loc="lower right", fontsize=14)
+    ax.set_xlabel(xlabel="Time [s]", fontsize=10)
+    ax.set_ylabel(ylabel="Velocity [m/s]", fontsize=10)
+    ax.legend(loc="lower right", fontsize=10)
     ax.set_ylim([-0.25,2.25])
     plt.show()
 
@@ -222,9 +222,9 @@ def plot_velocity_multi_vessels(sim_df, num_vessels):
         ax = sim_df.plot(x="Time", y=[r"$u_{}$".format(i), r"$v_{}$".format(i)], kind="line")
         ax.plot(sim_df["Time"], sim_df[r"$w_{}$".format(i)], dashes=[3,3], color="#88DD89", label=r"$w_{}$".format(i))
         ax.plot([0,sim_df["Time"].iloc[-1]], [1.5,1.5], label=r"$u_d$")
-        ax.set_xlabel(xlabel="Time [s]", fontsize=14)
-        ax.set_ylabel(ylabel="Velocity [m/s]", fontsize=14)
-        ax.legend(loc="lower right", fontsize=14)
+        ax.set_xlabel(xlabel="Time [s]", fontsize=10)
+        ax.set_ylabel(ylabel="Velocity [m/s]", fontsize=10)
+        ax.legend(loc="lower right", fontsize=10)
         ax.set_ylim([-0.25,2.25])
         plt.title("Velocity for Vessel {}".format(i+1))
         plt.show()
@@ -233,9 +233,9 @@ def plot_angular_velocity(sim_df):
     """Plots the angular velocity trajectories for the simulation data"""
     set_default_plot_rc()
     ax = sim_df.plot(x="Time", y=[r"$p$",r"$q$", r"$r$"], kind="line")
-    ax.set_xlabel(xlabel="Time [s]", fontsize=14)
-    ax.set_ylabel(ylabel="Angular Velocity [rad/s]", fontsize=14)
-    ax.legend(loc="lower right", fontsize=14)
+    ax.set_xlabel(xlabel="Time [s]", fontsize=10)
+    ax.set_ylabel(ylabel="Angular Velocity [rad/s]", fontsize=10)
+    ax.legend(loc="lower right", fontsize=10)
     ax.set_ylim([-1,1])
     plt.show()
 
@@ -247,9 +247,9 @@ def plot_angular_velocity_vessels(sim_df, num_vessels):
     for i in range(num_vessels):
         set_default_plot_rc()
         ax = sim_df.plot(x="Time", y=[r"$p_{}$".format(i), r"$q_{}$".format(i), r"$r_{}$".format(i)], kind="line")
-        ax.set_xlabel(xlabel="Time [s]", fontsize=14)
-        ax.set_ylabel(ylabel="Angular Velocity [rad/s]", fontsize=14)
-        ax.legend(loc="lower right", fontsize=14)
+        ax.set_xlabel(xlabel="Time [s]", fontsize=10)
+        ax.set_ylabel(ylabel="Angular Velocity [rad/s]", fontsize=10)
+        ax.legend(loc="lower right", fontsize=10)
         ax.set_ylim([-1, 1])
         plt.title("Angular Velocity for Vessel {}".format(i+1))
         plt.show()
@@ -261,9 +261,9 @@ def plot_control_inputs(sim_dfs):
     for i, sim_df in enumerate(sim_dfs):
         control = np.sqrt(sim_df[r"$\delta_r$"]**2+sim_df[r"$\delta_s$"]**2)
         plt.plot(sim_df["Time"], sim_df[r"$\delta_s$"], linewidth=4, color=c[i])
-    plt.xlabel(xlabel="Time [s]", fontsize=14)
-    plt.ylabel(ylabel="Normalized Input", fontsize=14)
-    plt.legend(loc="lower right", fontsize=14)
+    plt.xlabel(xlabel="Time [s]", fontsize=10)
+    plt.ylabel(ylabel="Normalized Input", fontsize=10)
+    plt.legend(loc="lower right", fontsize=10)
     plt.legend([r"$\lambda_r=0.9$", r"$\lambda_r=0.5$", r"$\lambda_r=0.1$"], loc="upper right", fontsize=14)
     plt.ylim([-1.25,1.25])
     plt.show()
@@ -278,8 +278,8 @@ def plot_control_inputs_multi_vessels(sim_dfs, num_vessels):
         for j, sim_df in enumerate(sim_dfs):
             control = np.sqrt(sim_df[r"$\delta_r_{"+str(i)+"}$"]**2 + sim_df[r"$\delta_s_{"+str(i)+"}$"]**2) # Calculate control input for each vessel
             plt.plot(sim_df["Time"], sim_df[r"$\delta_s_{"+str(i)+"}$"], linewidth=4, color=c[i], label=r"$vessel_{}$".format(i+1))
-    plt.xlabel(xlabel="Time [s]", fontsize=14)
-    plt.ylabel(ylabel="Normalized Input", fontsize=14)
+    plt.xlabel(xlabel="Time [s]", fontsize=10)
+    plt.ylabel(ylabel="Normalized Input", fontsize=10)
     # plt.legend(loc="lower right", fontsize=14)
     plt.legend([r"$\lambda_r=0.9$", r"$\lambda_r=0.5$", r"$\lambda_r=0.1$"], loc="upper right", fontsize=14)
     plt.ylim([-1.25, 1.25])  # Set y-limits for better visibility
@@ -299,7 +299,7 @@ def plot_control_errors(sim_dfs):
     plt.xlabel(xlabel="Time [s]", fontsize=12)
     plt.ylabel(ylabel="Tracking Error [m]", fontsize=12)
     #plt.ylim([0,15])
-    plt.legend([r"$\lambda_r=0.9$", r"$\lambda_r=0.5$", r"$\lambda_r=0.1$"], loc="upper right", fontsize=14)
+    plt.legend([r"$\lambda_r=0.9$", r"$\lambda_r=0.5$", r"$\lambda_r=0.1$"], loc="upper right", fontsize=8)
     plt.show()
 
 def plot_control_errors_multi_vessels(sim_dfs, num_vessels):
@@ -353,7 +353,7 @@ def plot_multiple_3d(env, sim_dfs, num_vessels):
         axes[i].set_xlabel(xlabel="North [m]", fontsize=10)
         axes[i].set_ylabel(ylabel="East [m]", fontsize=10)
         axes[i].set_zlabel(zlabel="Down [m]", fontsize=10)
-        axes[i].legend(loc="upper right", fontsize=8)  # Add legend for each vessel
+        axes[i].legend(bbox_to_anchor=(1.05,0), loc=3, borderaxespad=0, fontsize=8) # Add legend for each vessel
         
     plt.show()
     
